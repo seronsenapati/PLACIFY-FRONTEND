@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+.placify-font-style {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
