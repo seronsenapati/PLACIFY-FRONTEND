@@ -22,16 +22,18 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-black/30 backdrop-blur-lg border-b border-dashed border-white/30 text-white px-6 md:px-15 py-2 flex justify-between items-center shadow-lg">
-      <Link to="/" className="text-4xl font-bold tracking-wide placify-font-style">
+      <Link
+        to="/"
+        className="text-4xl font-bold tracking-wide placify-font-style"
+      >
         Placify
       </Link>
 
-      <div className="flex gap-4 md:gap-8 items-center">
+      <div className="flex gap-4 md:gap-7 items-center">
         {loggedIn ? (
           <>
             <Link to={dashPath} className="relative group">
-              <span className="hover:text-blue-400 transition">Dashboard</span>
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-blue-400 transition-all group-hover:w-full"></span>
+              <span>Dashboard</span>
             </Link>
             <button
               onClick={handleLogout}
@@ -48,12 +50,7 @@ export default function Navbar() {
             >
               Login
             </Link>
-            <Link
-              to="/register"
-              className="px-4 py-1.5 rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-sm md:text-base"
-            >
-              Register
-            </Link>
+            <Link to="/register">Register</Link>
           </>
         )}
       </div>

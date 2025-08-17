@@ -1,15 +1,25 @@
 // Central auth helpers
-export function setAuthData(token, role) {
+export function setAuthData(token, role, name) {
   localStorage.setItem('token', token);
   localStorage.setItem('role', role);
+  if (name) localStorage.setItem('name', name);
 }
+
 export function isLoggedIn() {
   return !!localStorage.getItem('token');
 }
+
 export function getRole() {
   return localStorage.getItem('role');
 }
+
+export function getName() {
+  return localStorage.getItem('name') || '';
+}
+
 export function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
+  localStorage.removeItem('name');
 }
+  

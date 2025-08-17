@@ -1,26 +1,35 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
-export default function Sidebar({ links }) {
+export default function Sidebar({ links = [] }) {
+  const location = useLocation();
+
   return (
-    <div className="text-white h-screen mt-16 p-6 w-64 bg-black/90 shadow-lg">
-      <nav className="space-y-3" aria-label="Sidebar navigation">
-        {links.map((link, idx) => (
-          <NavLink
-            key={idx}
-            to={link.path}
-            className={({ isActive }) =>
-              `block rounded-lg px-4 py-3 transition-all duration-300 text-sm md:text-base
-              ${
-                isActive
-                  ? "bg-white/10 border border-white/30 text-white"
-                  : "text-gray-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            {link.name}
-          </NavLink>
-        ))}
+    <aside className="pt-7 w-full h-full backdrop-blur-lg border-r border-dashed border-white/30 text-white shadow-lg">
+
+      {/* Nav */}
+      <nav className="p-4 space-y-5">
+        {links.map((link) => {
+          const active =
+            location.pathname === link.path ||
+            (link.matchPrefix && location.pathname.startsWith(link.matchPrefix));
+          return (
+            <NavLink
+              key={link.path}
+              to={link.path}
+              className={`block px-4 py-2.5 rounded-lg border transition
+                ${
+                  active
+                    ? "bg-white/15 border-white/20"
+                    : "bg-white/5 border-white/10 hover:bg-white/10"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm md:text-base">{link.name}</span>
+              </div>
+            </NavLink>
+          );
+        })}
       </nav>
-    </div>
+    </aside>
   );
 }

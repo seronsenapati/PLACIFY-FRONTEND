@@ -44,7 +44,7 @@ const Login = () => {
       // Since backend sends { success, message, data: { user, token } }
       const { token, user } = res.data.data;
 
-      setAuthData(token, user.role);
+      setAuthData(token, user.role, user.name);
 
       if (user.role === "student") navigate("/student/dashboard");
       else if (user.role === "recruiter") navigate("/recruiter/dashboard");
