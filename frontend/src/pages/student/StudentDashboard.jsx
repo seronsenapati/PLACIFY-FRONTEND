@@ -1,107 +1,209 @@
-// src/pages/student/StudentDashboard.jsx
 import { useEffect, useState } from "react";
-import Sidebar from "../../components/Sidebar";
-import { getName } from "../../utils/auth";
+import { 
+  Briefcase as BriefcaseIcon,
+  Calendar as CalendarIcon,
+  Bookmark as BookmarkIcon,
+  UserCheck as UserCheckIcon,
+  Eye as EyeIcon,
+  Clock as ClockIcon,
+  CheckCircle as CheckCircleIcon,
+  XCircle as XCircleIcon
+} from "lucide-react";
 
 export default function StudentDashboard() {
   const [applications, setApplications] = useState([]);
-  const username = getName();
-
-  const links = [
-    { name: "Dashboard", path: "/student/dashboard", matchPrefix: "/student/dashboard" },
-    { name: "Search Jobs", path: "/student/jobs" },
-    { name: "My Applications", path: "/student/applications" },
-    { name: "Profile", path: "/student/profile" },
-  ];
 
   useEffect(() => {
+    // Example demo data
     setApplications([
-      { id: 1, title: "Frontend Developer", company: "Tech Corp", status: "Pending" },
-      { id: 2, title: "Backend Engineer", company: "CodeWorks", status: "Accepted" },
-      { id: 3, title: "UI/UX Designer", company: "Designify", status: "Rejected" },
+      { 
+        id: 1, 
+        title: "Frontend Developer", 
+        company: "Tech Corp", 
+        status: "Pending",
+        appliedDate: "2023-06-15",
+        location: "Remote"
+      },
+      { 
+        id: 2, 
+        title: "Backend Engineer", 
+        company: "CodeWorks", 
+        status: "Accepted",
+        appliedDate: "2023-06-12",
+        location: "New York, NY"
+      },
+      { 
+        id: 3, 
+        title: "UI/UX Designer", 
+        company: "Designify", 
+        status: "Rejected",
+        appliedDate: "2023-06-05",
+        location: "San Francisco, CA"
+      },
     ]);
   }, []);
 
+  const stats = [
+    { 
+      label: "Applications Sent", 
+      value: applications.length, 
+      change: "+3 this week",
+      icon: <BriefcaseIcon className="w-5 h-5 text-blue-300" />,
+    },
+    { 
+      label: "Interviews", 
+      value: "5", 
+      change: "+2 this week",
+      icon: <CalendarIcon className="w-5 h-5 text-amber-300" />,
+    },
+    { 
+      label: "Saved Jobs", 
+      value: "12", 
+      icon: <BookmarkIcon className="w-5 h-5 text-purple-300" />,
+    },
+    { 
+      label: "Profile Completion", 
+      value: "85%", 
+      icon: <UserCheckIcon className="w-5 h-5" />,
+      progress: 85
+    },
+  ];
+
+  const getStatusStyles = (status) => {
+    const baseStyles = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center";
+    
+    switch(status) {
+      case "Accepted":
+        return `${baseStyles} bg-green-500/10 text-green-400`;
+      case "Rejected":
+        return `${baseStyles} bg-red-500/10 text-red-400`;
+      case "Pending":
+        return `${baseStyles} bg-yellow-500/10 text-yellow-400`;
+      case "Interview":
+        return `${baseStyles} bg-blue-500/10 text-blue-400`;
+      default:
+        return `${baseStyles} bg-gray-500/10 text-gray-400`;
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch(status) {
+      case "Accepted":
+        return <CheckCircleIcon className="w-4 h-4 mr-1.5" />;
+      case "Rejected":
+        return <XCircleIcon className="w-4 h-4 mr-1.5" />;
+      case "Pending":
+        return <ClockIcon className="w-4 h-4 mr-1.5" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="flex bg-gradient-to-br from-gray-900 to-black text-white pt-7">
-      {/* Sidebar */}
-      <div className="w-64">
-        <Sidebar links={links} />
-      </div>
-
-      {/* Main content area */}
-      <div className="flex-1">
-        <div className="p-6 md:p-10">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold">
-              {username ? `${username}'s Dashboard` : "Student Dashboard"}
-            </h1>
-            <p className="text-gray-300 mt-1">Track your applications and profile.</p>
-          </header>
-
-          {/* Summary Cards */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-            {[
-              { label: "Applied Jobs", value: applications.length },
-              { label: "Interviews", value: 2 },
-              { label: "Jobs Saved", value: 5 },
-              { label: "Profile Completion", value: "85%" },
-            ].map((c) => (
-              <div
-                key={c.label}
-                className="rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 p-5 shadow"
-              >
-                <p className="text-sm text-gray-300">{c.label}</p>
-                <p className="text-2xl font-semibold mt-2">{c.value}</p>
+    <div className="space-y-8">
+      {/* Summary Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/10 hover:border-white/20 h-full flex flex-col"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-400 truncate">{stat.label}</p>
+                <p className="mt-2 text-2xl font-bold tabular-nums">{stat.value}</p>
+                {stat.change && (
+                  <span className="inline-flex items-center text-xs mt-1 text-green-400">
+                    {stat.change} from last week
+                  </span>
+                )}
+                {stat.progress && (
+                  <div className="mt-2 w-full bg-gray-700/50 rounded-full h-1.5">
+                    <div 
+                      className="bg-blue-500 h-1.5 rounded-full" 
+                      style={{ width: `${stat.progress}%` }}
+                    ></div>
+                  </div>
+                )}
               </div>
-            ))}
-          </section>
-
-          {/* Recent Applications */}
-          <section className="rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 p-6 shadow">
-            <h2 className="text-xl font-semibold mb-4">Recent Applications</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-white/10 text-gray-300">
-                    <th className="py-2 pr-4">Job Title</th>
-                    <th className="py-2 pr-4">Company</th>
-                    <th className="py-2 pr-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {applications.map((app) => (
-                    <tr key={app.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-3 pr-4">{app.title}</td>
-                      <td className="py-3 pr-4 text-gray-300">{app.company}</td>
-                      <td className="py-3 pr-4">
-                        <span
-                          className={`px-2.5 py-1 rounded text-xs border ${
-                            app.status === "Accepted"
-                              ? "bg-green-500/20 border-green-500/30 text-green-300"
-                              : app.status === "Rejected"
-                              ? "bg-red-500/20 border-red-500/30 text-red-300"
-                              : "bg-yellow-500/20 border-yellow-500/30 text-yellow-300"
-                          }`}
-                        >
-                          {app.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {!applications.length && (
-                    <tr>
-                      <td colSpan={3} className="py-6 text-gray-400">
-                        No applications yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <div className="flex-shrink-0 ml-4 p-2.5 rounded-lg bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center h-10 w-10">
+                {stat.icon}
+              </div>
             </div>
-          </section>
+          </div>
+        ))}
+      </section>
+
+      {/* Recent Applications */}
+      <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5 mt-8">
+        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+          <h2 className="text-xl font-semibold">Recent Applications</h2>
+          <p className="text-sm text-gray-400 mt-1">Your recent job applications</p>
         </div>
-      </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Job Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Company</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Applied</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {applications.map((app, index) => (
+                <tr 
+                  key={app.id}
+                  className={`transition-colors duration-200 ${index % 2 === 0 ? 'bg-white/2.5' : 'bg-white/5'}`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium">{app.title}</div>
+                    <div className="text-sm text-gray-400">ID: {app.id}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {app.company}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    {app.location}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <div className="flex items-center">
+                      <ClockIcon className="w-4 h-4 mr-1.5 text-gray-500" />
+                      {app.appliedDate}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <span className={getStatusStyles(app.status)}>
+                      {getStatusIcon(app.status)}
+                      {app.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              
+              {!applications.length && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-12 text-center">
+                    <div className="text-gray-400">No applications found</div>
+                    <p className="mt-1 text-sm text-gray-500">Your job applications will appear here</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
+          <p className="text-sm text-gray-400">
+            Showing <span className="font-medium">1-{applications.length}</span> of <span className="font-medium">{applications.length}</span> applications
+          </p>
+          <button className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
+            View all applications →
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

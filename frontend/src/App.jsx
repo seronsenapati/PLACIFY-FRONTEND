@@ -9,9 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 export default function App() {
   return (
     <BrowserRouter>
-      <Navbar />
       <AppRoutes />
-      <Footer />
       <ToastContainer position="top-right" />
     </BrowserRouter>
   );

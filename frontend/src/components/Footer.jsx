@@ -35,8 +35,8 @@ export default function Landing() {
                     @seronsenapati
                   </a>
                 </p>
-                <p className="text-gray-500 text-xs">
-                  © 2025 Placify. All rights reserved.
+                <p className="text-gray-500 text-mb">
+                  © {new Date().getFullYear()} Placify. All rights reserved.
                 </p>
               </div>
 
@@ -96,7 +96,8 @@ export default function Landing() {
                     <li>
                       <Link
                         to="/privacy-policy"
-                        className="text-gray-400 hover:text-white transition-colors duration-200"s
+                        className="text-gray-400 hover:text-white transition-colors duration-200"
+                        s
                         onClick={scrollToTop}
                       >
                         Privacy Policy

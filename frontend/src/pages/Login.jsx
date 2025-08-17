@@ -57,7 +57,11 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black p-4">
+    <div className="min-h-screen flex items-center justify-center p-4"
+    style={{
+          background:
+            "linear-gradient(135deg, #ffffff14 0%, rgba(255, 255, 255, 0.12) 19%, rgba(255, 255, 255, 0.05) 28%, transparent 35%, transparent 100%), linear-gradient(to bottom, #18181b, #000000)",
+        }}>
       <div className="w-full max-w-md">
         <div className="p-8 rounded-xl shadow-2xl border border-white/20 mt-10 bg-white/5 backdrop-blur-lg">
           <div className="text-center mb-8">

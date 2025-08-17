@@ -21,7 +21,7 @@ export default function Navbar() {
       : "/admin/dashboard";
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-black/30 backdrop-blur-lg border-b border-dashed border-white/30 text-white px-6 md:px-15 py-2 flex justify-between items-center shadow-lg">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-black/30 backdrop-blur-lg border-b border-dashed border-white/20 text-white px-6 md:px-15 py-2 flex justify-between items-center shadow-lg">
       <Link
         to="/"
         className="text-4xl font-bold tracking-wide placify-font-style"
