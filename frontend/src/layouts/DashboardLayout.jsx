@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col">
         {/* Top Navbar */}
-        <header className="flex justify-between items-center bg-gradient-to-r from-white/5 to-transparent backdrop-blur-md border-b  border-dashed border-white/20 px-6 py-4">
+        <header className="flex justify-between items-center border-b border-dashed border-white/20 px-6 py-4">
           <h1 className="text-3xl">
             {username ? `Welcome back, ${username}.` : "Welcome to Dashboard"}
           </h1>
