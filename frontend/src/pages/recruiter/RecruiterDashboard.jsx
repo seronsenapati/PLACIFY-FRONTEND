@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import { 
   Briefcase as BriefcaseIcon,
   Users as UsersIcon,
-  Calendar as CalendarIcon,
-  CheckCircle as CheckCircleIcon,
   Clock as ClockIcon,
   MessageSquare as MessageSquareIcon,
   FileText as FileTextIcon
-} from "lucide-react";
+} from "../../components/CustomIcons";
 
 export default function RecruiterDashboard() {
   const [applicants, setApplicants] = useState([]);

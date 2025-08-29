@@ -6,6 +6,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
+    username: "", // ✅ added
     email: "",
     password: "",
     role: "student",
@@ -61,7 +62,7 @@ const Register = () => {
     >
       <div className="w-full max-w-md">
         <div className="p-6 mt-13 rounded-xl shadow-2xl border border-white/20 mt-10 bg-white/5 backdrop-blur-lg">
-          <div className="text-center mb-8">
+          <div className="text-center mb-3">
             <h2 className="text-3xl font-bold text-white">Create an Account</h2>
             <p className="mt-2 text-gray-300">Join us today</p>
           </div>
@@ -70,9 +71,9 @@ const Register = () => {
             <div className="mb-6 p-3 bg-green-500/20 text-green-300 text-sm rounded-md flex justify-between items-center">
               <span>{successMsg}</span>
               <button
-                onClick={() => setErrorMsg("")}
-                className="text-red-300 hover:text-red-100"
-                aria-label="Dismiss error"
+                onClick={() => setSuccessMsg("")}
+                className="text-green-300 hover:text-green-100"
+                aria-label="Dismiss success"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -118,7 +119,7 @@ const Register = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label
                 htmlFor="name"
@@ -134,6 +135,26 @@ const Register = () => {
                 className="w-full px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
                 placeholder="John Doe"
                 value={formData.name}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* ✅ New Username Field */}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                className="w-full px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
+                placeholder="johndoe123"
+                value={formData.username}
                 onChange={handleChange}
               />
             </div>
@@ -260,7 +281,7 @@ const Register = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
+          <div className="mt-4 text-center text-sm">
             <p className="text-gray-300">
               Already have an account?{" "}
               <Link

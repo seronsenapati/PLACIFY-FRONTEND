@@ -5,7 +5,7 @@ import {
   AlertCircle as AlertCircleIcon,
   CheckCircle as CheckCircleIcon,
   Clock as ClockIcon
-} from "lucide-react";
+} from "../../components/CustomIcons";
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState([]);

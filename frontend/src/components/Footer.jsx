@@ -97,7 +97,6 @@ export default function Landing() {
                       <Link
                         to="/privacy-policy"
                         className="text-gray-400 hover:text-white transition-colors duration-200"
-                        s
                         onClick={scrollToTop}
                       >
                         Privacy Policy

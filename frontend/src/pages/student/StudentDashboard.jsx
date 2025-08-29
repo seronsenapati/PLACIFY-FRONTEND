@@ -8,9 +8,17 @@ import {
   Clock as ClockIcon,
   CheckCircle as CheckCircleIcon,
   XCircle as XCircleIcon
-} from "lucide-react";
+} from "../../components/CustomIcons";
 
 export default function StudentDashboard() {
+  // Container style
+  const containerStyle = {
+    padding: '1.1rem',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '0.5rem',
+    minHeight: 'calc(100vh - 8rem)'
+  };
+
   const [applications, setApplications] = useState([]);
 
   useEffect(() => {
@@ -100,7 +108,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div style={containerStyle} className="space-y-8">
       {/* Summary Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {stats.map((stat) => (

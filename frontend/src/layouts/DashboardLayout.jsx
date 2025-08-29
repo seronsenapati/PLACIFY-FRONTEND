@@ -21,10 +21,12 @@ export default function DashboardLayout({ children }) {
   const sidebarLinks = {
     student: [
       { name: "Dashboard", path: "/student/dashboard" },
-      { name: "Search Jobs", path: "/student/jobs" },
+      { name: "Jobs", path: "/student/jobs" },
+      { name: "Saved Jobs", path: "/student/saved-jobs" },
       { name: "My Applications", path: "/student/applications" },
+      { name: "Notifications", path: "/student/notifications" },
       { name: "Profile", path: "/student/profile" },
-      { name: "Settings", path: "/student/settings" }, // Added Settings
+      { name: "Settings", path: "/student/settings" },
     ],
     recruiter: [
       { name: "Dashboard", path: "/recruiter/dashboard" },
@@ -75,7 +77,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-transparent to-black/30">{children}</main>
+        <main className="flex-1 overflow-y-auto p-2 bg-gradient-to-b from-transparent to-black/30">{children}</main>
       </div>
     </div>
   );

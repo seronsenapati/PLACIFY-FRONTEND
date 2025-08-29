@@ -39,18 +39,63 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/login", { email, password });
+      // Make a direct fetch request instead of using the API client to avoid interceptor issues
+      const response = await fetch('https://placify-backend-3wpm.onrender.com/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      });
 
-      // Since backend sends { success, message, data: { user, token } }
-      const { token, user } = res.data.data;
+      const data = await response.json();
+      console.log('Login response:', data); // Debug log
 
+      if (!response.ok) {
+        console.error('Login failed:', data); // Debug log
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Handle different response structures
+      let token, user;
+      if (data.data) {
+        // New format: { data: { token, user } }
+        token = data.data.token;
+        user = data.data.user;
+      } else if (data.token && data.user) {
+        // Alternative format: { token, user }
+        token = data.token;
+        user = data.user;
+      } else {
+        console.error('Unexpected response format:', data);
+        throw new Error('Invalid response format from server');
+      }
+
+      console.log('User data:', user); // Debug log
       setAuthData(token, user.role, user.name);
-
-      if (user.role === "student") navigate("/student/dashboard");
-      else if (user.role === "recruiter") navigate("/recruiter/dashboard");
-      else if (user.role === "admin") navigate("/admin/dashboard");
+      
+      // Check for saved redirect path
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        // Default dashboard based on role
+        if (user.role === "student") navigate("/student/dashboard");
+        else if (user.role === "recruiter") navigate("/recruiter/dashboard");
+        else if (user.role === "admin") navigate("/admin/dashboard");
+      }
     } catch (error) {
-      setErrorMsg(error.response?.data?.message || "Login failed");
+      console.error('Login error:', error);
+      // Show more specific error messages
+      let errorMessage = error.message || "Login failed. Please check your credentials and try again.";
+      
+      // Add debugging info for development
+      if (error.message && error.message.includes('Invalid response format')) {
+        errorMessage += " (Check browser console for details)";
+      }
+      
+      setErrorMsg(errorMessage);
     } finally {
       setLoading(false);
     }
