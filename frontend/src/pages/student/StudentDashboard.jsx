@@ -207,7 +207,7 @@ export default function StudentDashboard() {
           <p className="text-sm text-gray-400">
             Showing <span className="font-medium">1-{applications.length}</span> of <span className="font-medium">{applications.length}</span> applications
           </p>
-          <button className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
+          <button className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">
             View all applications →
           </button>
         </div>

@@ -81,7 +81,7 @@ export default function StudentApplications() {
                         <td className="py-3 pr-4 text-gray-400">{a.createdAt || a.appliedAt || a.appliedDate}</td>
                         <td className="py-3 pr-4"><span className={badgeClass(a.status)}>{a.status}</span></td>
                         <td className="py-3 pr-4 text-right">
-                          <button onClick={()=>withdraw(a)} disabled={withdrawing===id} className="px-3 py-1.5 rounded-lg border border-white/20">
+                          <button onClick={()=>withdraw(a)} disabled={withdrawing===id} className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition disabled:opacity-50">
                             {withdrawing===id ? "Withdrawing…" : "Withdraw"}
                           </button>
                         </td>

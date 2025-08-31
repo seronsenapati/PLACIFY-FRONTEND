@@ -23,3 +23,35 @@ export function logout() {
   localStorage.removeItem('role');
   localStorage.removeItem('name');
 }
+
+// Rate limiting utilities
+export function setRateLimitData(endpoint, retryAfter = 60) {
+  const rateLimitKey = `rate_limit_${endpoint}`;
+  const expiryTime = Date.now() + (retryAfter * 1000);
+  localStorage.setItem(rateLimitKey, expiryTime.toString());
+}
+
+export function getRateLimitData(endpoint) {
+  const rateLimitKey = `rate_limit_${endpoint}`;
+  const expiryTime = localStorage.getItem(rateLimitKey);
+  
+  if (!expiryTime) return null;
+  
+  const now = Date.now();
+  const expiry = parseInt(expiryTime);
+  
+  if (now >= expiry) {
+    localStorage.removeItem(rateLimitKey);
+    return null;
+  }
+  
+  return {
+    remainingTime: Math.ceil((expiry - now) / 1000),
+    expiryTime: expiry
+  };
+}
+
+export function clearRateLimitData(endpoint) {
+  const rateLimitKey = `rate_limit_${endpoint}`;
+  localStorage.removeItem(rateLimitKey);
+}

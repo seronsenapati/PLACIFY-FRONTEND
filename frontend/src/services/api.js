@@ -41,6 +41,10 @@ api.interceptors.response.use(
         case 404:
           console.error('Requested resource not found');
           break;
+        case 429:
+          console.error('Too many requests - rate limited');
+          // Don't redirect for rate limiting, let the component handle it
+          break;
         case 500:
           console.error('Server error');
           break;

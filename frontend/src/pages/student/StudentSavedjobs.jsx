@@ -74,7 +74,7 @@ export default function StudentSavedJobs() {
                   <button
                     onClick={() => remove(jobId)}
                     disabled={removing === jobId}
-                    className="px-3 py-1 text-sm rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                    className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition disabled:opacity-50"
                   >
                     {removing === jobId ? 'Removing...' : 'Remove'}
                   </button>

@@ -83,7 +83,7 @@ export default function StudentJobs() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Available Jobs</h1>
           <div className="flex gap-2">
-            <button onClick={() => { setQuery(""); setLocation(""); setType(""); }} className="px-4 py-2 rounded-lg border border-white/20">Reset</button>
+            <button onClick={() => { setQuery(""); setLocation(""); setType(""); }} className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">Reset</button>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -114,7 +114,7 @@ export default function StudentJobs() {
                       <h3 className="text-lg font-semibold">{job.title}</h3>
                       <p className="text-gray-300">{job.company}</p>
                     </div>
-                    <button onClick={()=>toggleBookmark(job)} className={`px-3 py-1 rounded-full border text-xs ${isBook ? "border-yellow-400 text-yellow-300" : "border-white/20 text-gray-300 hover:bg-white/10"}`}>
+                    <button onClick={()=>toggleBookmark(job)} className={`py-2 px-4 rounded-full border text-xs font-semibold transition ${isBook ? "border-yellow-400 text-yellow-300 bg-yellow-400/10" : "border-white/30 text-white bg-white/10 hover:bg-white/20"}`}>
                       {isBook ? "Bookmarked" : "Bookmark"}
                     </button>
                   </div>
@@ -123,7 +123,7 @@ export default function StudentJobs() {
                     <div className="mt-3 flex flex-wrap gap-2">{job.skills.map((s,i)=>(<span key={i} className="px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs">{s}</span>))}</div>
                   )}
                   <div className="mt-4 flex gap-3">
-                    <button onClick={()=>applyToJob(job)} disabled={applying===id} className="px-4 py-2 rounded-lg border border-white/20">
+                    <button onClick={()=>applyToJob(job)} disabled={applying===id} className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition disabled:opacity-50">
                       {applying===id ? "Applying…" : "Apply"}
                     </button>
                   </div>

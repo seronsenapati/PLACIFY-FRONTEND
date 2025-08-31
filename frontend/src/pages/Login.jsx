@@ -12,6 +12,9 @@ const Login = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
 
   // Show success message after register redirect
   useEffect(() => {
@@ -32,6 +35,23 @@ const Login = () => {
     }
   }, [errorMsg, successMsg]);
 
+  // Rate limit countdown effect
+  useEffect(() => {
+    let interval;
+    if (retryCountdown > 0) {
+      interval = setInterval(() => {
+        setRetryCountdown(prev => {
+          if (prev <= 1) {
+            setRateLimited(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [retryCountdown]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -48,13 +68,57 @@ const Login = () => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
-      console.log('Login response:', data); // Debug log
-
+      // Handle different HTTP status codes before attempting to parse JSON
       if (!response.ok) {
-        console.error('Login failed:', data); // Debug log
-        throw new Error(data.message || 'Login failed');
+        let errorMessage;
+        
+        switch (response.status) {
+          case 400:
+            errorMessage = "Invalid email or password. Please check your credentials.";
+            break;
+          case 401:
+            errorMessage = "Invalid credentials. Please check your email and password.";
+            break;
+          case 429:
+            setRateLimited(true);
+            setRetryCountdown(60); // 60 second countdown
+            setRetryCount(prev => prev + 1);
+            errorMessage = "Too many login attempts. Please wait a few minutes before trying again.";
+            break;
+          case 500:
+            errorMessage = "Server error. Please try again later.";
+            break;
+          case 503:
+            errorMessage = "Service temporarily unavailable. Please try again later.";
+            break;
+          default:
+            errorMessage = `Login failed (${response.status}). Please try again.`;
+        }
+        
+        // Try to parse JSON error response if available
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (jsonError) {
+          // If JSON parsing fails, use the default error message based on status code
+          console.log('Could not parse error response as JSON, using default message');
+        }
+        
+        throw new Error(errorMessage);
       }
+
+      // Parse successful response
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError);
+        throw new Error('Invalid response from server. Please try again.');
+      }
+
+      console.log('Login response:', data); // Debug log
 
       // Handle different response structures
       let token, user;
@@ -69,6 +133,10 @@ const Login = () => {
       } else {
         console.error('Unexpected response format:', data);
         throw new Error('Invalid response format from server');
+      }
+
+      if (!token || !user) {
+        throw new Error('Authentication failed. Please try again.');
       }
 
       console.log('User data:', user); // Debug log
@@ -87,12 +155,22 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Show more specific error messages
-      let errorMessage = error.message || "Login failed. Please check your credentials and try again.";
       
-      // Add debugging info for development
-      if (error.message && error.message.includes('Invalid response format')) {
-        errorMessage += " (Check browser console for details)";
+      let errorMessage = error.message;
+      
+      // Handle network errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      }
+      
+      // Handle timeout errors
+      if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        errorMessage = 'Request timeout. Please try again.';
+      }
+      
+      // Fallback for unknown errors
+      if (!errorMessage || errorMessage === 'Failed to fetch') {
+        errorMessage = 'Unable to connect to the server. Please try again later.';
       }
       
       setErrorMsg(errorMessage);
@@ -141,26 +219,50 @@ const Login = () => {
           )}
 
           {errorMsg && (
-            <div className="mb-6 p-3 bg-red-500/20 text-red-300 text-sm rounded-md flex justify-between items-center">
-              <span>{errorMsg}</span>
+            <div className={`mb-6 p-4 text-sm rounded-lg border flex items-start gap-3 ${
+              errorMsg.includes('Too many login attempts') 
+                ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' 
+                : 'bg-red-500/20 text-red-300 border-red-500/30'
+            }`}>
+              <div className="flex-shrink-0 mt-0.5">
+                {errorMsg.includes('Too many login attempts') ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">
+                  {errorMsg.includes('Too many login attempts') ? 'Rate Limited' : 'Login Failed'}
+                </p>
+                <p>{errorMsg}</p>
+                {errorMsg.includes('Too many login attempts') && (
+                  <div className="mt-3 space-y-2">
+                    {retryCountdown > 0 && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>You can try again in {retryCountdown} seconds</span>
+                      </div>
+                    )}
+                    <p className="text-xs opacity-80">
+                      💡 Tip: Clear your browser cache or try using incognito mode if this persists.
+                    </p>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => setErrorMsg("")}
-                className="text-red-300 hover:text-red-100"
+                className="flex-shrink-0 hover:opacity-70 transition-opacity"
                 aria-label="Dismiss error"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -259,12 +361,28 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading}
-              className={`w-full py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition ${
-                loading ? "opacity-75 cursor-not-allowed" : ""
+              disabled={loading || rateLimited}
+              className={`w-full py-2.5 px-4 font-semibold rounded-full border transition ${
+                loading || rateLimited
+                  ? "opacity-50 cursor-not-allowed bg-gray-600 border-gray-500 text-gray-300" 
+                  : "bg-white/10 border-white/30 text-white hover:bg-white/20"
               }`}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Logging in...
+                </div>
+              ) : rateLimited ? (
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  {retryCountdown > 0 ? `Retry in ${retryCountdown}s` : "Rate Limited"}
+                </div>
+              ) : (
+                "Login"
+              )}
             </button>
           </form>
 

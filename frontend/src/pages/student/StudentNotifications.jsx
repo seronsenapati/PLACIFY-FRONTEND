@@ -96,7 +96,7 @@ export default function StudentNotifications() {
                       <button
                         onClick={() => markRead(id)}
                         disabled={isBusy}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-white/20 hover:bg-white/10 transition-colors disabled:opacity-50"
+                        className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition disabled:opacity-50"
                       >
                         Mark as Read
                       </button>
@@ -104,7 +104,7 @@ export default function StudentNotifications() {
                     <button
                       onClick={() => remove(id)}
                       disabled={isBusy}
-                      className="px-3 py-1.5 text-sm rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                      className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition disabled:opacity-50"
                     >
                       {isBusy ? 'Deleting...' : 'Delete'}
                     </button>
