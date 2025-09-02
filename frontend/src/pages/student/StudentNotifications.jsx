@@ -214,7 +214,7 @@ export default function StudentNotifications() {
 
   return (
     <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
-      <div className="w-full max-w-7xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
+      <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Notifications</h1>
@@ -437,10 +437,6 @@ export default function StudentNotifications() {
               <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-6 relative">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.07c.893.204 1.962.32 3.17.32h7.244c1.208 0 2.277-.116 3.17-.32a.75.75 0 00.515-1.07C16.454 11.665 16 9.887 16 8a6 6 0 00-6-6zM8 19a2 2 0 104 0v1a2 2 0 11-4 0v-1z" />
-                </svg>
-                {/* Cross mark overlay - single diagonal line */}
-                <svg className="w-10 h-10 text-white absolute" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6" />
                 </svg>
               </div>
               

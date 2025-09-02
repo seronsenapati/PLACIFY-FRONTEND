@@ -162,7 +162,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
       {/* Recruiter */}
       <Route
         path="/recruiter/dashboard"

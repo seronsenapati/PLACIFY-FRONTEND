@@ -115,7 +115,7 @@ export default function StudentJobs() {
                       <p className="text-gray-300">{job.company}</p>
                     </div>
                     <button onClick={()=>toggleBookmark(job)} className={`py-2 px-4 rounded-full border text-xs font-semibold transition ${isBook ? "border-yellow-400 text-yellow-300 bg-yellow-400/10" : "border-white/30 text-white bg-white/10 hover:bg-white/20"}`}>
-                      {isBook ? "Bookmarked" : "Bookmark"}
+                      {isBook ? "Saved" : "Save Job"}
                     </button>
                   </div>
                   <div className="mt-3 text-sm text-gray-400">{job.location} • {job.jobType || job.type}</div>
