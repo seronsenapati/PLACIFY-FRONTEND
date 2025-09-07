@@ -27,12 +27,16 @@ import StudentSettings from "../pages/student/StudentSettings";
 import StudentNotifications from "../pages/student/StudentNotifications";
 import StudentSavedJobs from "../pages/student/StudentSavedjobs";
 
+// Recruiter feature pages
+import RecruiterSettings from "../pages/recruiter/RecruiterSettings";
+import CompanyProfile from "../pages/recruiter/CompanyProfile";
+import RecruiterNotifications from "../pages/recruiter/RecruiterNotifications";
+import RecruiterApplications from "../pages/recruiter/RecruiterApplications";
+import ManageJobs from "../pages/recruiter/ManageJobs";
+
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem("token");
   const role = getRole();
-
-  // 🔎 Debug log
-  console.log("ProtectedRoute Debug", { token, role, allowedRoles });
 
   const ok = isLoggedIn() && allowedRoles.includes(role?.toLowerCase());
   return ok ? children : <Navigate to="/login" replace />;
@@ -170,6 +174,56 @@ export default function AppRoutes() {
           <ProtectedRoute allowedRoles={["recruiter"]}>
             <DashboardLayout>
               <RecruiterDashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recruiter/jobs"
+        element={
+          <ProtectedRoute allowedRoles={["recruiter"]}>
+            <DashboardLayout>
+              <ManageJobs />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recruiter/notifications"
+        element={
+          <ProtectedRoute allowedRoles={["recruiter"]}>
+            <DashboardLayout>
+              <RecruiterNotifications />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recruiter/settings"
+        element={
+          <ProtectedRoute allowedRoles={["recruiter"]}>
+            <DashboardLayout>
+              <RecruiterSettings />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recruiter/company"
+        element={
+          <ProtectedRoute allowedRoles={["recruiter"]}>
+            <DashboardLayout>
+              <CompanyProfile />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recruiter/applications"
+        element={
+          <ProtectedRoute allowedRoles={["recruiter"]}>
+            <DashboardLayout>
+              <RecruiterApplications />
             </DashboardLayout>
           </ProtectedRoute>
         }

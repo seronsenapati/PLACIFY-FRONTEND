@@ -16,6 +16,7 @@ import {
   Bookmark as BookmarkIcon,
   Bell as BellIcon,
   ChevronLeft as ChevronLeftIcon,
+  ClipboardList as ClipboardListIcon,
 } from "./CustomIcons";
 
 const getIcon = (name, collapsed = false) => {
@@ -48,6 +49,8 @@ const getIcon = (name, collapsed = false) => {
     case "bookmarks":
     case "saved jobs":
       return <BookmarkIcon className={iconClass} />;
+    case "applications":
+      return <ClipboardListIcon className={iconClass} />;
     default:
       return <span className="w-5 h-5"></span>;
   }
@@ -63,12 +66,14 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
         {/* Header Section */}
         <div className="flex-1">
           {/* Logo */}
-          <div className={`${collapsed ? 'p-2 pt-4 mb-2 text-center' : 'p-2 pt-4 mb-2 text-center'} transition-all duration-300`}>
+          <div className={`${collapsed ? 'p-2 pt-5 mb-2 text-center' : 'p-2 pt-4 mb-2 text-center'} transition-all duration-300`}>
             <Link
               to="/"
               className={`font-bold tracking-wide placify-font-style transition-all duration-300 ${
-                collapsed ? 'text-3xl' : 'text-4xl'
-              } hover:text-blue-300`}
+                collapsed 
+                  ? 'text-5xl border-3 border-white rounded-full w-13 h-13 flex items-center justify-center mx-auto -mt-2' 
+                  : 'text-5xl'
+              }`}
             >
               {collapsed ? 'P' : 'Placify'}
             </Link>
@@ -108,19 +113,26 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
                           </span>
                           
                           {/* Notification Badge */}
-                          {link.badge && (
-                            <div className="ml-2 flex-shrink-0">
-                              {link.badge === 'New' ? (
-                                <div className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full">
-                                  {link.badge}
-                                </div>
-                              ) : (
-                                <div className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                                  {link.badge}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          <div className="ml-2 flex-shrink-0 flex items-center">
+                            {link.badge && (
+                              <div className="flex items-center">
+                                {link.badge === 'New' ? (
+                                  <div className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full">
+                                    {link.badge}
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                    {link.badge}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Red dot for unread notifications */}
+                            {link.name === 'Notifications' && link.badge && parseInt(link.badge) > 0 && (
+                              <div className="w-2 h-2 bg-red-500 rounded-full ml-1 animate-pulse"></div>
+                            )}
+                          </div>
+
                         </>
                       )}
                     </div>
@@ -131,15 +143,22 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
                     <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50">
                       <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl border border-white/20 whitespace-nowrap text-sm">
                         {link.name}
-                        {link.badge && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-xs rounded-full">
-                            {link.badge}
-                          </span>
-                        )}
+                        <div className="flex items-center">
+                          {link.badge && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-xs rounded-full">
+                              {link.badge}
+                            </span>
+                          )}
+                          {/* Red dot for unread notifications in tooltip */}
+                          {link.name === 'Notifications' && link.badge && parseInt(link.badge) > 0 && (
+                            <div className="w-2 h-2 bg-red-500 rounded-full ml-1 animate-pulse"></div>
+                          )}
+                        </div>
                         <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
                       </div>
                     </div>
                   )}
+
                 </div>
               );
             })}

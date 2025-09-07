@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { logout, getRole, getName } from "../utils/auth";
 import Sidebar from "../components/Sidebar";
 import { useState, useEffect } from "react";
+import api from "../services/api";
 
 export default function DashboardLayout({ children }) {
   const navigate = useNavigate();
@@ -10,6 +11,8 @@ export default function DashboardLayout({ children }) {
   const username = getName();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingUnreadCount, setLoadingUnreadCount] = useState(true);
 
   // Update time every minute
   useEffect(() => {
@@ -18,6 +21,31 @@ export default function DashboardLayout({ children }) {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (role !== 'student' && role !== 'recruiter') return;
+      
+      try {
+        setLoadingUnreadCount(true);
+        const response = await api.get("/notifications/stats");
+        const unread = response.data.data?.unread || 0;
+        setUnreadCount(unread);
+      } catch (error) {
+        console.error("Failed to fetch notification stats:", error);
+        setUnreadCount(0);
+      } finally {
+        setLoadingUnreadCount(false);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Set up polling to refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [role]);
 
   const handleLogout = () => {
     logout();
@@ -73,8 +101,11 @@ export default function DashboardLayout({ children }) {
       { name: "Dashboard", path: "/student/dashboard", badge: null },
       { name: "Jobs", path: "/student/jobs", badge: "New" },
       { name: "Saved Jobs", path: "/student/saved-jobs", badge: null },
-      { name: "My Applications", path: "/student/applications", badge: null },
-      { name: "Notifications", path: "/student/notifications", badge: "3" },
+      { 
+        name: "Notifications", 
+        path: "/student/notifications", 
+        badge: unreadCount > 0 ? unreadCount.toString() : null
+      },
       { name: "Profile", path: "/student/profile", badge: null },
       { name: "Settings", path: "/student/settings", badge: null },
     ],
@@ -82,7 +113,12 @@ export default function DashboardLayout({ children }) {
       { name: "Dashboard", path: "/recruiter/dashboard", badge: null },
       { name: "Company Profile", path: "/recruiter/company", badge: null },
       { name: "Manage Jobs", path: "/recruiter/jobs", badge: null },
-      { name: "Applicants", path: "/recruiter/applicants", badge: "12" },
+      { name: "Applications", path: "/recruiter/applications", badge: null },
+      { 
+        name: "Notifications", 
+        path: "/recruiter/notifications", 
+        badge: unreadCount > 0 ? unreadCount.toString() : null
+      },
       { name: "Settings", path: "/recruiter/settings", badge: null },
     ],
     admin: [
@@ -108,7 +144,7 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* Enhanced Sidebar */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} relative transition-all duration-300 ease-in-out`}>
+      <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} relative transition-all duration-300 ease-in-out`}>
         <div className="absolute inset-0 border-r border-dashed border-white/20"></div>
         <div className="relative h-full">
           <Sidebar 

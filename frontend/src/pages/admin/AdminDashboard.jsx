@@ -4,7 +4,9 @@ import {
   Briefcase as BriefcaseIcon,
   AlertCircle as AlertCircleIcon,
   CheckCircle as CheckCircleIcon,
-  Clock as ClockIcon
+  Clock as ClockIcon,
+  Building as BuildingOfficeIcon,
+  FileText as DocumentTextIcon
 } from "../../components/CustomIcons";
 
 export default function AdminDashboard() {

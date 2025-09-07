@@ -1,8 +1,9 @@
 // Central auth helpers
-export function setAuthData(token, role, name) {
+export function setAuthData(token, role, name, userId) {
   localStorage.setItem('token', token);
   localStorage.setItem('role', role?.toLowerCase()); // ensure lowercase role
   if (name) localStorage.setItem('name', name);
+  if (userId) localStorage.setItem('userId', userId);
 }
 
 export function isLoggedIn() {
@@ -18,10 +19,15 @@ export function getName() {
   return localStorage.getItem('name') || '';
 }
 
+export function getUserId() {
+  return localStorage.getItem('userId');
+}
+
 export function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('name');
+  localStorage.removeItem('userId');
 }
 
 // Rate limiting utilities

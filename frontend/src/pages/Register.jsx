@@ -71,20 +71,21 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Make a direct fetch request for better error handling
-      const response = await fetch('https://placify-backend-3wpm.onrender.com/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
+      // Use the API service which now uses the proxy
+      const response = await api.post('/auth/register', formData);
 
-      // Handle different HTTP status codes before attempting to parse JSON
-      if (!response.ok) {
-        let errorMessage;
-        
-        switch (response.status) {
+      // Registration successful
+      navigate("/login", {
+        state: { message: "Registration successful. Please log in." },
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      
+      let errorMessage = "Registration failed. Please try again.";
+      
+      // Handle different HTTP status codes
+      if (error.response) {
+        switch (error.response.status) {
           case 400:
             errorMessage = "Invalid registration data. Please check all fields and try again.";
             break;
@@ -108,58 +109,25 @@ const Register = () => {
             errorMessage = "Service temporarily unavailable. Please try again later.";
             break;
           default:
-            errorMessage = `Registration failed (${response.status}). Please try again.`;
+            errorMessage = `Registration failed (${error.response.status}). Please try again.`;
         }
         
-        // Try to parse JSON error response if available
-        try {
-          const errorData = await response.json();
-          if (errorData.message) {
-            errorMessage = errorData.message;
+        // Handle error response data if available
+        if (error.response.data) {
+          if (error.response.data.message) {
+            errorMessage = error.response.data.message;
           }
           // Handle validation errors from backend
-          if (errorData.errors && Array.isArray(errorData.errors)) {
-            errorMessage = errorData.errors.join(', ');
+          if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+            errorMessage = error.response.data.errors.join(', ');
           }
-        } catch (jsonError) {
-          // If JSON parsing fails, use the default error message based on status code
-          console.log('Could not parse error response as JSON, using default message');
         }
-        
-        throw new Error(errorMessage);
-      }
-
-      // Parse successful response
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse response JSON:', jsonError);
-        throw new Error('Invalid response from server. Please try again.');
-      }
-
-      // Registration successful
-      navigate("/login", {
-        state: { message: "Registration successful. Please log in." },
-      });
-    } catch (error) {
-      console.error('Registration error:', error);
-      
-      let errorMessage = error.message;
-      
-      // Handle network errors
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      } else if (error.request) {
+        // Network error
         errorMessage = 'Network error. Please check your internet connection and try again.';
-      }
-      
-      // Handle timeout errors
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        errorMessage = 'Request timeout. Please try again.';
-      }
-      
-      // Fallback for unknown errors
-      if (!errorMessage || errorMessage === 'Failed to fetch') {
-        errorMessage = 'Unable to connect to the server. Please try again later.';
+      } else {
+        // Other errors
+        errorMessage = 'An unexpected error occurred. Please try again.';
       }
       
       setErrorMsg(errorMessage);
@@ -368,7 +336,8 @@ const Register = () => {
                           a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243
                           4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532
                           7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0
-                          0112 5c4.478 0 8.268 2.943 9.543 7a10.025
+                          0112 5c4.478 0 8.268 2.943 9.542
+                          7a10.025
                           10.025 0 01-4.132 5.411m0 0L21 21"
                       />
                     </svg>
@@ -401,7 +370,7 @@ const Register = () => {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <label
                 htmlFor="role"
                 className="block text-sm font-medium text-gray-300 mb-1"
@@ -411,13 +380,18 @@ const Register = () => {
               <select
                 id="role"
                 name="role"
-                className="w-full px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
+                className="w-full px-4 py-2.5 pr-10 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 bg-transparent text-white appearance-none cursor-pointer"
                 value={formData.role}
                 onChange={handleChange}
               >
-                <option value="student">Student</option>
-                <option value="recruiter">Recruiter</option>
+                <option value="student" className="bg-gray-800">Student</option>
+                <option value="recruiter" className="bg-gray-800">Recruiter</option>
               </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 top-6">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
 
             <button

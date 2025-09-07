@@ -59,20 +59,51 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Make a direct fetch request instead of using the API client to avoid interceptor issues
-      const response = await fetch('https://placify-backend-3wpm.onrender.com/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password })
-      });
+      // Use the API service which now uses the proxy
+      const response = await api.post('/auth/login', { email, password });
 
-      // Handle different HTTP status codes before attempting to parse JSON
-      if (!response.ok) {
-        let errorMessage;
-        
-        switch (response.status) {
+      console.log('Login response:', response.data); // Debug log
+
+      // Handle different response structures
+      let token, user;
+      if (response.data.data) {
+        // New format: { data: { token, user } }
+        token = response.data.data.token;
+        user = response.data.data.user;
+      } else if (response.data.token && response.data.user) {
+        // Alternative format: { token, user }
+        token = response.data.token;
+        user = response.data.user;
+      } else {
+        console.error('Unexpected response format:', response.data);
+        throw new Error('Invalid response format from server');
+      }
+
+      if (!token || !user) {
+        throw new Error('Authentication failed. Please try again.');
+      }
+
+      setAuthData(token, user.role, user.name, user._id || user.id);
+      
+      // Check for saved redirect path
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        // Default dashboard based on role
+        if (user.role === "student") navigate("/student/dashboard");
+        else if (user.role === "recruiter") navigate("/recruiter/dashboard");
+        else if (user.role === "admin") navigate("/admin/dashboard");
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      let errorMessage = "Login failed. Please try again.";
+      
+      // Handle different HTTP status codes
+      if (error.response) {
+        switch (error.response.status) {
           case 400:
             errorMessage = "Invalid email or password. Please check your credentials.";
             break;
@@ -92,85 +123,21 @@ const Login = () => {
             errorMessage = "Service temporarily unavailable. Please try again later.";
             break;
           default:
-            errorMessage = `Login failed (${response.status}). Please try again.`;
+            errorMessage = `Login failed (${error.response.status}). Please try again.`;
         }
         
-        // Try to parse JSON error response if available
-        try {
-          const errorData = await response.json();
-          if (errorData.message) {
-            errorMessage = errorData.message;
+        // Handle error response data if available
+        if (error.response.data) {
+          if (error.response.data.message) {
+            errorMessage = error.response.data.message;
           }
-        } catch (jsonError) {
-          // If JSON parsing fails, use the default error message based on status code
-          console.log('Could not parse error response as JSON, using default message');
         }
-        
-        throw new Error(errorMessage);
-      }
-
-      // Parse successful response
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse response JSON:', jsonError);
-        throw new Error('Invalid response from server. Please try again.');
-      }
-
-      console.log('Login response:', data); // Debug log
-
-      // Handle different response structures
-      let token, user;
-      if (data.data) {
-        // New format: { data: { token, user } }
-        token = data.data.token;
-        user = data.data.user;
-      } else if (data.token && data.user) {
-        // Alternative format: { token, user }
-        token = data.token;
-        user = data.user;
-      } else {
-        console.error('Unexpected response format:', data);
-        throw new Error('Invalid response format from server');
-      }
-
-      if (!token || !user) {
-        throw new Error('Authentication failed. Please try again.');
-      }
-
-      console.log('User data:', user); // Debug log
-      setAuthData(token, user.role, user.name);
-      
-      // Check for saved redirect path
-      const redirectPath = localStorage.getItem('redirectAfterLogin');
-      if (redirectPath) {
-        localStorage.removeItem('redirectAfterLogin');
-        navigate(redirectPath);
-      } else {
-        // Default dashboard based on role
-        if (user.role === "student") navigate("/student/dashboard");
-        else if (user.role === "recruiter") navigate("/recruiter/dashboard");
-        else if (user.role === "admin") navigate("/admin/dashboard");
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      
-      let errorMessage = error.message;
-      
-      // Handle network errors
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      } else if (error.request) {
+        // Network error
         errorMessage = 'Network error. Please check your internet connection and try again.';
-      }
-      
-      // Handle timeout errors
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        errorMessage = 'Request timeout. Please try again.';
-      }
-      
-      // Fallback for unknown errors
-      if (!errorMessage || errorMessage === 'Failed to fetch') {
-        errorMessage = 'Unable to connect to the server. Please try again later.';
+      } else {
+        // Other errors
+        errorMessage = 'An unexpected error occurred. Please try again.';
       }
       
       setErrorMsg(errorMessage);
@@ -219,19 +186,37 @@ const Login = () => {
           )}
 
           {errorMsg && (
-            <div className={`mb-6 p-4 text-sm rounded-lg border flex items-start gap-3 ${
-              errorMsg.includes('Too many login attempts') 
-                ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' 
-                : 'bg-red-500/20 text-red-300 border-red-500/30'
-            }`}>
-              <div className="flex-shrink-0 mt-0.5">
+            <div className="mb-6 p-3 bg-red-500/20 text-red-300 text-sm rounded-md flex justify-between items-center">
+              <div className="flex items-start gap-2">
                 {errorMsg.includes('Too many login attempts') ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 )}
               </div>
@@ -258,11 +243,22 @@ const Login = () => {
               </div>
               <button
                 onClick={() => setErrorMsg("")}
-                className="flex-shrink-0 hover:opacity-70 transition-opacity"
+                className="text-red-300 hover:text-red-100 flex-shrink-0"
                 aria-label="Dismiss error"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -278,7 +274,9 @@ const Login = () => {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 className="w-full px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
                 placeholder="you@example.com"
@@ -298,6 +296,7 @@ const Login = () => {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   required
                   className="w-full pr-10 px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
                   placeholder="••••••••"
@@ -322,12 +321,7 @@ const Login = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7
-                          a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243
-                          4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532
-                          7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0
-                          0112 5c4.478 0 8.268 2.943 9.543 7a10.025
-                          10.025 0 01-4.132 5.411m0 0L21 21"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
                       />
                     </svg>
                   ) : (

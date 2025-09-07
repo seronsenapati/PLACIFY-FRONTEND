@@ -4,7 +4,8 @@ import {
   Users as UsersIcon,
   Clock as ClockIcon,
   MessageSquare as MessageSquareIcon,
-  FileText as FileTextIcon
+  FileText as FileTextIcon,
+  Calendar as CalendarIcon
 } from "../../components/CustomIcons";
 
 export default function RecruiterDashboard() {
