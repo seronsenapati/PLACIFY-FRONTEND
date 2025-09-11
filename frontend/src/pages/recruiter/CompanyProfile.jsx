@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
-import { getRole } from "../../utils/auth";
+import { getRole, getUserId } from "../../utils/auth";
 
 export default function CompanyProfile() {
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ export default function CompanyProfile() {
     location: "",
     industry: "",
     size: "1-10",
-    employeeCount: "",
+    employeeCount: "", // Keep as string to match form input
     socialMedia: {
       linkedin: "",
       twitter: "",
@@ -33,14 +33,17 @@ export default function CompanyProfile() {
     }
   });
 
+  // Ensure form data is properly initialized
+  console.log("[Company Profile] Initial form data:", formData);
+
   // Industry options based on backend model
   const industryOptions = [
-    "Technology", 
-    "Finance", 
-    "Healthcare", 
-    "Education", 
-    "Manufacturing", 
-    "Retail", 
+    "Technology",
+    "Finance",
+    "Healthcare",
+    "Education",
+    "Manufacturing",
+    "Retail",
     "Hospitality",
     "Transportation",
     "Media",
@@ -56,17 +59,17 @@ export default function CompanyProfile() {
 
   // Company size options based on backend model
   const sizeOptions = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
-  
+
   // Make these available at the module level for validation
   const validIndustryOptions = new Set(industryOptions);
   const validSizeOptions = new Set(sizeOptions);
 
   // Verify user is recruiter
   const role = getRole();
-  const userId = localStorage.getItem('userId');
+  const userId = getUserId();
   console.log("[Company Profile] Current role:", role);
   console.log("[Company Profile] Current userId:", userId);
-  
+
   if (role !== 'recruiter') {
     return (
       <div className="min-h-[calc(100vh-6rem)] flex justify-center items-center">
@@ -88,8 +91,8 @@ export default function CompanyProfile() {
             </ol>
           </div>
           <div className="mt-6">
-            <a 
-              href="/recruiter/dashboard" 
+            <a
+              href="/recruiter/dashboard"
               className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               Return to Dashboard
@@ -99,7 +102,7 @@ export default function CompanyProfile() {
       </div>
     );
   }
-  
+
   // Check if userId exists for recruiters
   if (!userId) {
     return (
@@ -115,8 +118,8 @@ export default function CompanyProfile() {
             User ID not found. Please log in again.
           </p>
           <div className="mt-6">
-            <a 
-              href="/login" 
+            <a
+              href="/login"
               className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               Go to Login
@@ -148,18 +151,18 @@ export default function CompanyProfile() {
       setLoading(true);
       const res = await api.get("/companies");
       console.log("[fetch company profile] Response:", res.data);
-      
+
       // Check if recruiter has a company
       if (res.data?.data?.companies && res.data.data.companies.length > 0) {
         // Get user ID for filtering
-        const currentUserId = localStorage.getItem('userId');
+        const currentUserId = getUserId();
         console.log("[fetch company profile] Current user ID:", currentUserId);
-        
+
         // Find company created by current user
         const userCompany = res.data.data.companies.find(
           comp => comp.createdBy === currentUserId
         );
-        
+
         if (userCompany) {
           console.log("[fetch company profile] Found user company:", userCompany);
           setCompany(userCompany);
@@ -182,7 +185,7 @@ export default function CompanyProfile() {
       }
     } catch (err) {
       console.error("[fetch company profile]", err);
-      
+
       if (err.response?.status === 403) {
         setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
       } else if (err.response?.status === 401) {
@@ -198,7 +201,9 @@ export default function CompanyProfile() {
 
   function handleInputChange(e) {
     const { name, value } = e.target;
-    
+
+    console.log("[Company Profile] Input change:", name, value);
+
     // Handle nested socialMedia fields
     if (name.startsWith("socialMedia.")) {
       const socialField = name.split(".")[1];
@@ -217,76 +222,132 @@ export default function CompanyProfile() {
     }
   }
 
+  async function handleLogoUpload() {
+    if (!logoFile) {
+      setErrorMsg("Please select a logo file");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("logo", logoFile);
+
+    try {
+      setUploadingLogo(true);
+      const res = await api.post(`/companies/${company._id}/logo`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      console.log("[handleLogoUpload] Logo uploaded successfully:", res.data);
+      setCompany(res.data.data);
+      setSuccessMsg("Company logo updated successfully!");
+    } catch (logoUploadError) {
+      console.error("[handleLogoUpload] Error uploading logo:", logoUploadError);
+      setErrorMsg("Failed to upload logo. Please try again.");
+    } finally {
+      setUploadingLogo(false);
+      setLogoFile(null);
+      setLogoPreview(null);
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+    }
+  }
+
   // Modified form submission to handle logo upload after company creation
   async function handleSubmit(e) {
     e.preventDefault();
-    
+    e.stopPropagation(); // Prevent event bubbling
+
+    console.log("[Company Profile] Form submission started");
+
+    // Set saving state immediately
+    setSaving(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
     // Validate required fields
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       setErrorMsg("Company name is required");
+      setSaving(false);
       return;
     }
-    
-    if (!formData.website.trim()) {
+
+    if (!formData.website || !formData.website.trim()) {
       setErrorMsg("Website is required");
+      setSaving(false);
       return;
     }
-    
-    if (!formData.desc.trim()) {
+
+    if (!formData.desc || !formData.desc.trim()) {
       setErrorMsg("Description is required");
+      setSaving(false);
       return;
     }
-    
+
     // Additional validation for field lengths
     if (formData.name.trim().length < 2) {
       setErrorMsg("Company name must be at least 2 characters long");
+      setSaving(false);
       return;
     }
-    
+
     if (formData.name.trim().length > 100) {
       setErrorMsg("Company name must be less than 100 characters");
+      setSaving(false);
       return;
     }
-    
+
     if (formData.desc.trim().length < 10) {
       setErrorMsg("Description must be at least 10 characters long");
+      setSaving(false);
       return;
     }
-    
-    if (formData.desc.trim().length > 2000) {
-      setErrorMsg("Description must be less than 2000 characters");
+
+    if (formData.desc.trim().length > 1000) {
+      setErrorMsg("Description must be less than 1000 characters");
+      setSaving(false);
       return;
     }
-    
-    // Validate URL format
+
+    // Validate URL format and ensure it's properly formatted
+    let websiteUrl = formData.website.trim();
+
+    // Add protocol if missing
+    if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+      websiteUrl = 'https://' + websiteUrl;
+    }
+
     try {
-      new URL(formData.website);
+      new URL(websiteUrl);
+      // Update the website in formData to ensure it has the protocol
+      formData.website = websiteUrl;
     } catch (err) {
       setErrorMsg("Please enter a valid website URL (e.g., https://example.com)");
+      setSaving(false);
       return;
     }
-    
-    // Also validate that website starts with http or https
-    if (!formData.website.startsWith('http://') && !formData.website.startsWith('https://')) {
-      setErrorMsg("Website URL must start with http:// or https://");
-      return;
-    }
-    
+
     // Validate employeeCount if provided
-    if (formData.employeeCount && (isNaN(parseInt(formData.employeeCount, 10)) || parseInt(formData.employeeCount, 10) < 0)) {
-      setErrorMsg("Employee count must be a valid positive number");
-      return;
+    if (formData.employeeCount && formData.employeeCount !== "") {
+      const employeeCount = parseInt(formData.employeeCount, 10);
+      if (isNaN(employeeCount) || employeeCount < 0) {
+        setErrorMsg("Employee count must be a valid positive number");
+        setSaving(false);
+        return;
+      }
     }
-    
+
     // Validate social media URLs if provided
     const socialMediaFields = ['linkedin', 'twitter', 'facebook', 'instagram'];
     const correctedSocialMedia = { ...formData.socialMedia };
-    
+
     for (const field of socialMediaFields) {
       if (formData.socialMedia[field] && formData.socialMedia[field].trim() !== '') {
         try {
           // Add protocol if missing
-          let url = formData.socialMedia[field];
+          let url = formData.socialMedia[field].trim(); // Trim whitespace
           if (!url.startsWith('http://') && !url.startsWith('https://')) {
             url = 'https://' + url;
           }
@@ -295,97 +356,222 @@ export default function CompanyProfile() {
           correctedSocialMedia[field] = url;
         } catch (err) {
           setErrorMsg(`Please enter a valid ${field} URL or leave it empty`);
+          setSaving(false);
           return;
         }
+      } else {
+        // Remove empty social media fields
+        delete correctedSocialMedia[field];
       }
     }
-    
-    // Prepare data for submission
-    const submitData = {
-      ...formData,
+
+    // Additional validation to ensure social media URLs are properly formatted
+    Object.keys(correctedSocialMedia).forEach(key => {
+      if (typeof correctedSocialMedia[key] === 'string') {
+        correctedSocialMedia[key] = correctedSocialMedia[key].trim();
+        // Ensure URL is valid
+        try {
+          new URL(correctedSocialMedia[key]);
+        } catch (err) {
+          console.error(`Invalid URL for ${key}:`, correctedSocialMedia[key]);
+          delete correctedSocialMedia[key]; // Remove invalid URLs
+        }
+      }
+    });
+
+    // Ensure all social media URLs are properly formatted
+    Object.keys(correctedSocialMedia).forEach(key => {
+      if (correctedSocialMedia[key] && typeof correctedSocialMedia[key] === 'string') {
+        correctedSocialMedia[key] = correctedSocialMedia[key].trim();
+      }
+    });
+
+    // Prepare data for submission - be more explicit about what we're sending
+    let submitData = {
       name: formData.name.trim(),
-      desc: formData.desc.trim(),
-      location: formData.location.trim(),
-      socialMedia: correctedSocialMedia,
-      employeeCount: formData.employeeCount ? parseInt(formData.employeeCount, 10) : undefined
+      desc: formData.desc.trim().substring(0, 1000), // Limit description length
+      website: formData.website.trim()
     };
-    
+
+    // Additional validation to ensure desc doesn't exceed backend limits
+    if (submitData.desc.length > 1000) {
+      submitData.desc = submitData.desc.substring(0, 1000);
+      console.warn("[Company Profile] Description truncated to 1000 characters");
+    }
+
+    // Only add optional fields if they have values
+    if (formData.location && formData.location.trim()) {
+      submitData.location = formData.location.trim();
+    }
+
+    if (formData.industry && formData.industry.trim()) {
+      submitData.industry = formData.industry;
+    }
+
+    if (formData.size && formData.size.trim()) {
+      submitData.size = formData.size;
+    }
+
+    // Handle employeeCount properly
+    const employeeCount = formData.employeeCount !== "" ? parseInt(formData.employeeCount, 10) : NaN;
+    if (!isNaN(employeeCount) && employeeCount >= 0) {
+      submitData.employeeCount = employeeCount;
+    } else if (formData.employeeCount !== "") {
+      // If employeeCount is provided but invalid, show an error
+      console.warn("[Company Profile] Invalid employeeCount provided:", formData.employeeCount);
+    }
+
+    // Handle socialMedia properly - ensure it's always an object even if empty
+    if (Object.keys(correctedSocialMedia).length > 0) {
+      submitData.socialMedia = { ...correctedSocialMedia };
+    } else {
+      // Always include socialMedia object even if empty
+      submitData.socialMedia = {};
+    }
+
     // Validate industry and size
-    if (formData.industry && !validIndustryOptions.has(formData.industry)) {
-      setErrorMsg("Please select a valid industry from the dropdown");
-      setSaving(false);
-      return;
-    }
-    
-    if (formData.size && !validSizeOptions.has(formData.size)) {
-      setErrorMsg("Please select a valid company size from the dropdown");
-      setSaving(false);
-      return;
-    }
-    
-    // Only include industry and size if they are selected
-    if (!formData.industry) delete submitData.industry;
-    if (!formData.size) delete submitData.size;
-    
-    // Add createdBy field for new companies
-    if (!company) {
-      const userId = localStorage.getItem('userId');
-      console.log("[Company Profile] User ID from localStorage:", userId);
-      if (!userId) {
-        setErrorMsg("User ID not found. Please log in again.");
+    if (formData.industry && formData.industry.trim() !== "") {
+      if (!validIndustryOptions.has(formData.industry)) {
+        setErrorMsg("Please select a valid industry from the dropdown");
         setSaving(false);
         return;
       }
-      submitData.createdBy = userId;
     }
-    
-    // Remove empty fields
-    if (!submitData.employeeCount && submitData.employeeCount !== 0) {
+
+    if (formData.size && formData.size.trim() !== "") {
+      if (!validSizeOptions.has(formData.size)) {
+        setErrorMsg("Please select a valid company size from the dropdown");
+        setSaving(false);
+        return;
+      }
+    }
+
+    // Only include industry and size if they are selected
+    if (!formData.industry || formData.industry.trim() === "") delete submitData.industry;
+    if (!formData.size || formData.size.trim() === "") delete submitData.size;
+
+    // Remove employeeCount if it's undefined
+    if (submitData.employeeCount === undefined) {
       delete submitData.employeeCount;
-    } else if (submitData.employeeCount) {
-      // Ensure employeeCount is a number
-      submitData.employeeCount = parseInt(submitData.employeeCount, 10);
     }
-    
+
     // Remove other empty fields
-    if (!submitData.location) delete submitData.location;
-    if (!submitData.industry) delete submitData.industry;
-    if (!submitData.size) delete submitData.size;
-    
+    if (!submitData.location || submitData.location.trim() === "") delete submitData.location;
+
     // Clean up empty social media fields
     Object.keys(submitData.socialMedia).forEach(key => {
       if (!submitData.socialMedia[key] || submitData.socialMedia[key].trim() === '') {
         delete submitData.socialMedia[key];
       }
     });
-    
+
+    // Add createdBy field for new companies
+    if (!company) {
+      const userId = getUserId();
+      console.log("[Company Profile] User ID from auth utils:", userId);
+
+      // Validate userId format
+      if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+        setErrorMsg("User ID not found or invalid. Please log in again.");
+        setSaving(false);
+        return;
+      }
+
+      // Trim userId to remove any whitespace
+      const trimmedUserId = userId.trim();
+      console.log("[Company Profile] Trimmed User ID:", trimmedUserId);
+
+      // Additional validation for userId format (ensure it looks like a MongoDB ObjectId)
+      if (trimmedUserId.length !== 24 || !/^[0-9a-fA-F]+$/.test(trimmedUserId)) {
+        console.error("[Company Profile] Invalid userId format:", trimmedUserId);
+        setErrorMsg("User ID format is invalid. Please log in again.");
+        setSaving(false);
+        return;
+      }
+
+      // Add createdBy field for new companies
+      submitData.createdBy = trimmedUserId;
+    } else {
+      // For updates, make sure we don't send createdBy
+      delete submitData.createdBy;
+    }
+
+    // Final validation - remove any fields that are empty strings
+    Object.keys(submitData).forEach(key => {
+      if (key !== 'socialMedia' && typeof submitData[key] === 'string' && submitData[key].trim() === '') {
+        delete submitData[key];
+      }
+      // Ensure all string fields are trimmed
+      if (typeof submitData[key] === 'string') {
+        submitData[key] = submitData[key].trim();
+      }
+    });
+
+    // Ensure socialMedia is always an object
+    if (!submitData.socialMedia || typeof submitData.socialMedia !== 'object') {
+      submitData.socialMedia = {};
+    }
+
+    // Clean up socialMedia object to ensure it only contains valid fields
+    const validSocialFields = ['linkedin', 'twitter', 'facebook', 'instagram'];
+    const cleanedSocialMedia = {};
+
+    validSocialFields.forEach(field => {
+      if (submitData.socialMedia[field] && typeof submitData.socialMedia[field] === 'string' && submitData.socialMedia[field].trim() !== '') {
+        cleanedSocialMedia[field] = submitData.socialMedia[field].trim();
+      }
+    });
+
+    submitData.socialMedia = cleanedSocialMedia;
+
     // Log the data being sent for debugging
     console.log("[Company Profile] Sending data:", submitData);
-    
+
     // Also log the raw form data for comparison
     console.log("[Company Profile] Raw form data:", formData);
-    
-    setSaving(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-    
+
+    // Log the JSON stringified version to check for any serialization issues
+    try {
+      console.log("[Company Profile] JSON data being sent:", JSON.stringify(submitData, null, 2));
+    } catch (jsonErr) {
+      console.error("[Company Profile] Error serializing data:", jsonErr);
+    }
+
+    // Define isUpdating before using it
+    const isUpdating = !!company;
+
+    // Additional debugging before sending request
+    console.log("[Company Profile] About to send request with config:");
+    console.log("[Company Profile] Method:", isUpdating ? "PATCH" : "POST");
+    console.log("[Company Profile] URL:", isUpdating ? `/companies/${company._id}` : "/companies");
+
     try {
       let res;
-      const isUpdating = !!company;
-      
+
       if (isUpdating) {
         // Update existing company
         console.log("[Company Profile] Updating company with ID:", company._id);
         res = await api.patch(`/companies/${company._id}`, submitData);
       } else {
         // Create new company
-        console.log("[Company Profile] Creating new company");
+        console.log("[Company Profile] Creating new company with data:", submitData);
+        console.log("[Company Profile] JSON data being sent:", JSON.stringify(submitData, null, 2));
         res = await api.post("/companies", submitData);
       }
-      
+
+      console.log("[Company Profile] Response received:", res);
+      console.log("[Company Profile] Response status:", res.status);
+      console.log("[Company Profile] Response data:", res.data);
+
+      // Check if response has the expected structure
+      if (!res.data || !res.data.data) {
+        console.error("[Company Profile] Invalid response structure:", res);
+        throw new Error("Invalid response structure from server. The server response did not match the expected format.");
+      }
+
       setCompany(res.data.data);
       setSuccessMsg(isUpdating ? "Company profile updated successfully!" : "Company profile created successfully!");
-      
+
       // If we have a logo file waiting and just created a company, upload it now
       if (!isUpdating && logoFile) {
         console.log("[handleSubmit] Uploading logo after company creation");
@@ -429,25 +615,38 @@ export default function CompanyProfile() {
         setLogoFile(null);
         setLogoPreview(null);
       }
-      
+
       setIsEditing(false);
       setShowForm(false);
       setLogoFile(null);
       setLogoPreview(null);
     } catch (err) {
       console.error("[save company profile]", err);
-      
+
+      // Log detailed request information
+      console.error("[save company profile] Request details:", {
+        isUpdating,
+        company,
+        submitData,
+        userId: getUserId()
+      });
+
+      // Log the exact data being sent in the request
+      console.error("[save company profile] Exact request payload:", JSON.stringify(submitData, null, 2));
+
+      // Log the error stack trace if available
+      if (err.stack) {
+        console.error("[save company profile] Error stack:", err.stack);
+      }
+
       if (err.response?.status === 403) {
         setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
       } else if (err.response?.status === 401) {
         setErrorMsg("Authentication required. Please log in again.");
-      } else {
-        // Show more detailed error information
-        let errorMessage = "Failed to save company profile";
-        
-        // Log the full error response for debugging
-        console.log("Full error response:", err.response);
-        
+      } else if (err.response?.status === 400) {
+        // Handle validation errors
+        let errorMessage = "Invalid company data. Please check all required fields.";
+
         // Check for validation errors in the response
         if (err.response?.data?.errors) {
           // Format validation errors
@@ -460,24 +659,66 @@ export default function CompanyProfile() {
           errorMessage = err.response.data.message;
         } else if (err.response?.data?.error) {
           errorMessage = err.response.data.error;
-        } else if (err.response?.statusText) {
-          errorMessage = `Error ${err.response.status}: ${err.response.statusText}`;
         }
-        
-        // If we still don't have a specific error message, show the status
-        if (errorMessage === "Failed to save company profile" && err.response?.status) {
-          errorMessage = `Server error (${err.response.status}): ${err.response.statusText || 'Bad Request'}`;
-        }
-        
+
         setErrorMsg(errorMessage);
-        
-        // Log detailed error for debugging
-        console.error("Detailed error info:", {
+      } else if (err.response?.status === 500) {
+        // More detailed 500 error handling
+        let errorMessage = "Failed to save company profile due to a server error. Please try again later.";
+
+        // Log the full error response for debugging
+        console.log("Full error response:", err.response);
+
+        // Check for specific error information in different parts of the response
+        if (err.response?.data?.message) {
+          errorMessage = `Server error: ${err.response.data.message}`;
+        } else if (err.response?.data?.error) {
+          errorMessage = `Server error: ${err.response.data.error}`;
+        } else if (err.response?.data) {
+          // If there's data but no message or error field, try to stringify it
+          try {
+            const errorData = JSON.stringify(err.response.data);
+            if (errorData && errorData !== '{}') {
+              errorMessage = `Server error with details: ${errorData}`;
+            }
+          } catch (stringifyError) {
+            // If we can't stringify, just use the generic message
+            console.error("Could not stringify error data:", stringifyError);
+          }
+        } else if (err.response?.statusText) {
+          errorMessage = `Server error (${err.response.status}): ${err.response.statusText}`;
+        }
+
+        // If we still don't have a specific error message, show the status
+        if (errorMessage === "Failed to save company profile due to a server error. Please try again later." && err.response?.status) {
+          errorMessage = `Server error (${err.response.status}): ${err.response.statusText || 'Internal Server Error'}. Please try again later.`;
+        }
+
+        // Add additional debugging information
+        console.error("Server Error Details:", {
           status: err.response?.status,
           statusText: err.response?.statusText,
           data: err.response?.data,
-          headers: err.response?.headers
+          headers: err.response?.headers,
+          config: err.config
         });
+
+        // Log the request data that was sent
+        console.error("Request data sent:", submitData);
+        console.error("Request JSON:", JSON.stringify(submitData, null, 2));
+
+        // Add a more user-friendly message
+        errorMessage += " This is likely a backend issue. Please try again or contact support if the problem persists.";
+
+        setErrorMsg(errorMessage);
+      } else if (err.request) {
+        // Network error
+        console.error("Network error:", err.request);
+        setErrorMsg("Network error. Please check your internet connection and try again. This could also indicate a problem with the backend server.");
+      } else {
+        // Other errors
+        console.error("Error message:", err.message);
+        setErrorMsg("An unexpected error occurred. Please try again.");
       }
     } finally {
       setSaving(false);
@@ -488,7 +729,7 @@ export default function CompanyProfile() {
   async function handleLogoUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (!validTypes.includes(file.type)) {
@@ -499,7 +740,7 @@ export default function CompanyProfile() {
       }
       return;
     }
-    
+
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       setErrorMsg("File size must be less than 5MB");
@@ -534,6 +775,32 @@ export default function CompanyProfile() {
     }
   }
 
+  function handleCancel() {
+    setIsEditing(false);
+    setShowForm(false);
+    setLogoFile(null);
+    setLogoPreview(null);
+  }
+
+  function handleEdit() {
+    setIsEditing(true);
+    setShowForm(true);
+  }
+
+  function handleDelete() {
+    if (window.confirm("Are you sure you want to delete this company profile? This action cannot be undone.")) {
+      deleteCompany(company._id)
+        .then(() => {
+          setCompany(null);
+          setSuccessMsg("Company profile deleted successfully.");
+        })
+        .catch(err => {
+          console.error("[delete company profile]", err);
+          setErrorMsg("Failed to delete company profile. Please try again.");
+        });
+    }
+  }
+
   // Separate function to handle actual logo upload
   async function uploadLogo(file) {
     // Ensure we have a valid company ID
@@ -542,33 +809,33 @@ export default function CompanyProfile() {
       setUploadingLogo(false);
       return;
     }
-    
+
     // Log file information for debugging
     console.log("[uploadLogo] File info:", {
       name: file.name,
       size: file.size,
       type: file.type
     });
-    
+
     const fd = new FormData();
     fd.append("logo", file);
-    
+
     console.log("[uploadLogo] FormData entries:");
     for (let [key, value] of fd.entries()) {
       console.log(key, value);
     }
-    
+
     console.log("[uploadLogo] Uploading logo file:", file);
     console.log("[uploadLogo] Company ID:", company._id);
-    
+
     setUploadingLogo(true);
     setErrorMsg("");
     setSuccessMsg("");
-    
+
     try {
       // The api service will now handle FormData properly
       const res = await api.patch(`/companies/${company._id}`, fd);
-      
+
       console.log("[uploadLogo] Success response:", res.data);
       setCompany(res.data.data);
       setLogoFile(null); // Clear temporary file
@@ -581,7 +848,7 @@ export default function CompanyProfile() {
     } catch (err) {
       console.error("[upload company logo]", err);
       console.log("[uploadLogo] Error response:", err.response);
-      
+
       if (err.response?.status === 403) {
         setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
       } else if (err.response?.status === 401) {
@@ -614,15 +881,15 @@ export default function CompanyProfile() {
 
   async function handleDeleteCompany() {
     if (!company) return;
-    
+
     if (!window.confirm("Are you sure you want to delete your company profile? This action cannot be undone.")) {
       return;
     }
-    
+
     setDeleting(true);
     setErrorMsg("");
     setSuccessMsg("");
-    
+
     try {
       await api.delete(`/companies/${company._id}`);
       setCompany(null);
@@ -644,7 +911,7 @@ export default function CompanyProfile() {
       setSuccessMsg("Company profile deleted successfully!");
     } catch (err) {
       console.error("[delete company profile]", err);
-      
+
       if (err.response?.status === 403) {
         setErrorMsg("Access denied. You don't have permission to delete this company.");
       } else if (err.response?.status === 401) {
@@ -706,7 +973,7 @@ export default function CompanyProfile() {
 
   if (loading) {
     return (
-      <LoadingScreen 
+      <LoadingScreen
         title="Loading Company Profile"
         subtitle="Please wait while we load your company information..."
         steps={[
@@ -732,7 +999,7 @@ export default function CompanyProfile() {
                   Manage your company information
                 </p>
               </div>
-              
+
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -751,7 +1018,7 @@ export default function CompanyProfile() {
                   )}
                   Edit
                 </button>
-                
+
                 <button
                   onClick={handleDeleteCompany}
                   disabled={deleting || saving || uploadingLogo}
@@ -787,7 +1054,7 @@ export default function CompanyProfile() {
                       {errorMsg || successMsg}
                     </span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => { setErrorMsg(""); setSuccessMsg(""); }}
                     className="hover:opacity-70 transition-opacity"
                   >
@@ -804,7 +1071,7 @@ export default function CompanyProfile() {
               <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
                 <h2 className="text-xl font-semibold">Company Information</h2>
               </div>
-              
+
               <div className="p-6">
                 <div className="flex flex-col sm:flex-row items-start gap-6">
                   <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
@@ -825,41 +1092,41 @@ export default function CompanyProfile() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                         />
                       </svg>
                     )}
                   </div>
-                  
+
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-white">{company.name}</h3>
                     <p className="text-gray-300 mt-1">{company.location || "Location not specified"}</p>
-                    
+
                     <div className="mt-4">
-                      <a 
-                        href={company.website} 
-                        target="_blank" 
+                      <a
+                        href={company.website}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
                       >
                         Visit Website
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                       </a>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-6 pt-6 border-t border-white/10">
                   <p className="text-gray-300">{company.desc || "No description provided"}</p>
-                  
+
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-400">Industry</p>
                       <p className="text-white">{company.industry || "Not specified"}</p>
                     </div>
-                    
+
                     <div>
                       <p className="text-sm text-gray-400">Company Size</p>
                       <p className="text-white">{company.size ? `${company.size} employees` : "Not specified"}</p>
@@ -868,7 +1135,7 @@ export default function CompanyProfile() {
                 </div>
               </div>
             </div>
-            
+
             {/* Company Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
@@ -884,13 +1151,13 @@ export default function CompanyProfile() {
                   </div>
                 </div>
                 <div className="mt-4 w-full bg-white/10 rounded-full h-2">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full" 
+                  <div
+                    className="bg-blue-500 h-2 rounded-full"
                     style={{ width: `${company.profileCompleteness || 0}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-amber-500/10">
@@ -905,7 +1172,7 @@ export default function CompanyProfile() {
                 </div>
                 <div className="mt-4 flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map(star => (
-                    <svg 
+                    <svg
                       key={star}
                       className={`w-4 h-4 ${star <= (company.averageRating || 0) ? 'text-amber-400' : 'text-gray-600'}`}
                       fill="currentColor"
@@ -917,12 +1184,13 @@ export default function CompanyProfile() {
                   <span className="text-sm text-gray-400 ml-2">({company.reviewCount || 0} reviews)</span>
                 </div>
               </div>
-              
+
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-500/10">
                     <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7h.01M9 7h.01M8 11h8" />
                     </svg>
                   </div>
                   <div>
@@ -931,8 +1199,8 @@ export default function CompanyProfile() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <a 
-                    href="/recruiter/jobs" 
+                  <a
+                    href="/recruiter/jobs"
                     className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
                   >
                     Manage jobs
@@ -959,12 +1227,12 @@ export default function CompanyProfile() {
             <div>
               <h1 className="text-3xl font-bold">Company Profile</h1>
               <p className="text-gray-400 mt-1">
-                {company 
-                  ? "Edit your company information" 
+                {company
+                  ? "Edit your company information"
                   : "Create your company profile to start posting jobs"}
               </p>
             </div>
-            
+
             {(company && !showForm) && (
               <button
                 onClick={() => {
@@ -999,7 +1267,7 @@ export default function CompanyProfile() {
                     {errorMsg || successMsg}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={() => { setErrorMsg(""); setSuccessMsg(""); }}
                   className="hover:opacity-70 transition-opacity"
                 >
@@ -1026,7 +1294,7 @@ export default function CompanyProfile() {
               <button
                 onClick={() => setShowForm(true)}
                 disabled={loading}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+                className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
               >
                 {loading ? (
                   <div className="flex items-center justify-center gap-2">
@@ -1048,12 +1316,12 @@ export default function CompanyProfile() {
                   {company ? "Edit Company Profile" : "Create Company Profile"}
                 </h2>
                 <p className="text-sm text-gray-400 mt-1">
-                  {company 
-                    ? "Update your company details below" 
+                  {company
+                    ? "Update your company details below"
                     : "Fill in your company information to get started"}
                 </p>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
                 {/* Company Logo Section - Always show for recruiters */}
                 <div className="border-b border-white/10 pb-6">
@@ -1143,7 +1411,7 @@ export default function CompanyProfile() {
                       placeholder="Enter company name"
                     />
                   </div>
-                  
+
                   <div>
                     <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-2">
                       Website *
@@ -1159,7 +1427,7 @@ export default function CompanyProfile() {
                       placeholder="https://example.com"
                     />
                   </div>
-                  
+
                   <div className="md:col-span-2">
                     <label htmlFor="desc" className="block text-sm font-medium text-gray-300 mb-2">
                       Description *
@@ -1176,7 +1444,7 @@ export default function CompanyProfile() {
                     />
                   </div>
                 </div>
-                
+
                 {/* Additional Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -1193,7 +1461,7 @@ export default function CompanyProfile() {
                       placeholder="City, Country"
                     />
                   </div>
-                  
+
                   <div>
                     <label htmlFor="industry" className="block text-sm font-medium text-gray-300 mb-2">
                       Industry
@@ -1211,7 +1479,7 @@ export default function CompanyProfile() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label htmlFor="size" className="block text-sm font-medium text-gray-300 mb-2">
                       Company Size
@@ -1229,7 +1497,7 @@ export default function CompanyProfile() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label htmlFor="employeeCount" className="block text-sm font-medium text-gray-300 mb-2">
                       Employee Count
@@ -1246,11 +1514,11 @@ export default function CompanyProfile() {
                     />
                   </div>
                 </div>
-                
+
                 {/* Social Media Links */}
                 <div className="border-t border-white/10 pt-6">
                   <h3 className="text-lg font-medium text-white mb-4">Social Media Links</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="socialMedia.linkedin" className="block text-sm font-medium text-gray-300 mb-2">
@@ -1266,7 +1534,7 @@ export default function CompanyProfile() {
                         placeholder="https://linkedin.com/company/example"
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="socialMedia.twitter" className="block text-sm font-medium text-gray-300 mb-2">
                         Twitter
@@ -1281,7 +1549,7 @@ export default function CompanyProfile() {
                         placeholder="https://twitter.com/example"
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="socialMedia.facebook" className="block text-sm font-medium text-gray-300 mb-2">
                         Facebook
@@ -1296,7 +1564,7 @@ export default function CompanyProfile() {
                         placeholder="https://facebook.com/example"
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="socialMedia.instagram" className="block text-sm font-medium text-gray-300 mb-2">
                         Instagram
@@ -1313,13 +1581,13 @@ export default function CompanyProfile() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Form Actions */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
                   <button
                     type="submit"
                     disabled={saving || uploadingLogo || deleting}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {saving || uploadingLogo ? (
                       <>
@@ -1330,12 +1598,12 @@ export default function CompanyProfile() {
                       <>{company ? "Update Profile" : "Create Profile"}</>
                     )}
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={saving || uploadingLogo || deleting}
-                    className="px-6 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white rounded-lg transition-colors"
+                    className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {saving || uploadingLogo || deleting ? (
                       <div className="flex items-center justify-center gap-2">
@@ -1358,7 +1626,7 @@ export default function CompanyProfile() {
   // Helper function to format validation errors
   function formatValidationErrors(errors) {
     if (!errors) return null;
-    
+
     // If it's an array of errors
     if (Array.isArray(errors)) {
       return errors
@@ -1370,7 +1638,7 @@ export default function CompanyProfile() {
         })
         .join(', ');
     }
-    
+
     // If it's an object with field-specific errors
     if (typeof errors === 'object') {
       const errorMessages = [];
@@ -1385,7 +1653,7 @@ export default function CompanyProfile() {
       }
       return errorMessages.join(', ');
     }
-    
+
     return null;
   }
 }

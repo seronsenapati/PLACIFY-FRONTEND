@@ -2,42 +2,45 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
+import {
+  Plus as PlusIcon,
+  Edit as EditIcon,
+  Trash2 as TrashIcon,
+  Eye as EyeIcon,
+  Search as SearchIcon,
+  Filter as FilterIcon,
+  Calendar as CalendarIcon,
+  MapPin as MapPinIcon,
+  DollarSign as DollarSignIcon,
+  Clock as ClockIcon,
+  Users as UsersIcon,
+  Briefcase as BriefcaseIcon
+} from "../../components/CustomIcons";
 
 export default function ManageJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
   const [filters, setFilters] = useState({
-    search: "",
-    status: "",
-    jobType: "",
     page: 1,
     limit: 10,
-    sortBy: "createdAt",
-    order: "desc"
+    search: '',
+    status: '',
+    jobType: '',
+    sortBy: 'createdAt',
+    order: 'desc'
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
-    totalCount: 0,
-    hasNextPage: false,
-    hasPrevPage: false
+    totalCount: 0
   });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [currentJob, setCurrentJob] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newJob, setNewJob] = useState({
-    title: "",
-    role: "",
-    desc: "",
-    location: "",
-    salary: "",
-    skills: "",
-    jobType: "internship",
-    experienceLevel: "entry",
-    isRemote: false,
-    applicationDeadline: ""
-  });
+  const [stats, setStats] = useState({});
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -52,29 +55,126 @@ export default function ManageJobs() {
 
   useEffect(() => {
     loadJobs();
+    loadStats();
   }, [filters]);
 
   async function loadJobs() {
     try {
       const queryParams = new URLSearchParams();
-      
-      if (filters.search) queryParams.append('search', filters.search);
-      if (filters.status) queryParams.append('status', filters.status);
-      if (filters.jobType) queryParams.append('jobType', filters.jobType);
-      if (filters.page) queryParams.append('page', filters.page);
-      if (filters.limit) queryParams.append('limit', filters.limit);
-      if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
-      if (filters.order) queryParams.append('order', filters.order);
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) queryParams.append(key, filters[key]);
+      });
 
       const res = await api.get(`/jobs/recruiter/my-jobs?${queryParams.toString()}`);
       const data = res.data.data;
       setJobs(data.jobs || []);
-      setPagination(data.pagination || {});
+      setPagination({
+        currentPage: data.currentPage || 1,
+        totalPages: data.totalPages || 1,
+        totalCount: data.totalJobs || 0
+      });
     } catch (err) {
       console.error('Error loading jobs:', err);
-      setErrorMsg('Failed to load jobs');
+
+      // Handle authentication errors
+      if (err.response?.status === 401) {
+        setErrorMsg('Authentication required. Please log in again.');
+      } else if (err.response?.status === 403) {
+        setErrorMsg('Access denied. You do not have permission to view this resource.');
+      } else {
+        setErrorMsg('Failed to load jobs. Please try again later.');
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStats() {
+    try {
+      const res = await api.get("/jobs/recruiter/stats");
+      setStats(res.data.data || {});
+    } catch (err) {
+      console.error('Error loading stats:', err);
+      // We don't need to show an error message for stats loading failure
+    }
+  }
+
+  // Check if recruiter has company profile
+  async function checkCompanyProfile() {
+    try {
+      const res = await api.get("/profile");
+      const userData = res.data.data;
+      console.log("User profile data:", userData);
+
+      // For recruiters, check if they have a company association
+      if (userData.role === "recruiter") {
+        // Check if user has a company field that is not null/undefined
+        if (userData.company) {
+          // Company could be:
+          // 1. A full company object with _id
+          // 2. Just the company ID string
+          // 3. An object with other properties
+          console.log("Company data found:", userData.company);
+
+          // If it's an object with _id, that's valid
+          if (typeof userData.company === 'object' && userData.company._id) {
+            console.log("Valid company found (object with _id):", userData.company._id);
+            return true;
+          }
+          // If it's a string and not empty, that's valid
+          else if (typeof userData.company === 'string' && userData.company.length > 0) {
+            console.log("Valid company found (ID string):", userData.company);
+            return true;
+          }
+          // If it's an object without _id but not null, it might be valid
+          else if (typeof userData.company === 'object' && Object.keys(userData.company).length > 0) {
+            console.log("Valid company found (object):", userData.company);
+            return true;
+          }
+        }
+
+        console.log("No valid company found for recruiter");
+        return false;
+      }
+
+      // For admins, they can specify company when creating job
+      if (userData.role === "admin") {
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Error checking company profile:', err);
+      return false;
+    }
+  }
+
+  async function deleteJob(jobId) {
+    if (!window.confirm("Are you sure you want to delete this job? This action cannot be undone.")) {
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [jobId]: true }));
+    try {
+      await api.delete(`/jobs/${jobId}`);
+      setSuccessMsg("Job deleted successfully");
+      loadJobs();
+      loadStats();
+    } catch (err) {
+      console.error('Error deleting job:', err);
+
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        setErrorMsg('Authentication required. Please log in again.');
+      } else if (err.response?.status === 403) {
+        setErrorMsg('Access denied. You do not have permission to delete this job.');
+      } else if (err.response?.status === 404) {
+        setErrorMsg('Job not found. It may have already been deleted.');
+      } else {
+        setErrorMsg('Failed to delete job. Please try again later.');
+      }
+    } finally {
+      setActionLoading(prev => ({ ...prev, [jobId]: false }));
     }
   }
 
@@ -84,101 +184,6 @@ export default function ManageJobs() {
       [field]: value,
       page: field !== 'page' ? 1 : value // Reset to page 1 when changing filters
     }));
-  };
-
-  const handleCreateJob = async (e) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!newJob.title.trim()) {
-      setErrorMsg('Job title is required');
-      return;
-    }
-    
-    if (!newJob.role.trim()) {
-      setErrorMsg('Role is required');
-      return;
-    }
-    
-    if (!newJob.desc.trim()) {
-      setErrorMsg('Description is required');
-      return;
-    }
-    
-    if (!newJob.location.trim()) {
-      setErrorMsg('Location is required');
-      return;
-    }
-    
-    if (!newJob.salary || Number(newJob.salary) <= 0) {
-      setErrorMsg('Valid salary is required');
-      return;
-    }
-    
-    if (!newJob.skills.trim()) {
-      setErrorMsg('At least one skill is required');
-      return;
-    }
-    
-    setActionLoading({ create: true });
-    
-    try {
-      const jobData = {
-        ...newJob,
-        salary: Number(newJob.salary),
-        skills: newJob.skills.split(',').map(skill => skill.trim()).filter(skill => skill)
-      };
-      
-      await api.post("/jobs", jobData);
-      setSuccessMsg("Job created successfully");
-      setShowCreateForm(false);
-      setNewJob({
-        title: "",
-        role: "",
-        desc: "",
-        location: "",
-        salary: "",
-        skills: "",
-        jobType: "internship",
-        experienceLevel: "entry",
-        isRemote: false,
-        applicationDeadline: ""
-      });
-      loadJobs(); // Refresh the job list
-    } catch (err) {
-      console.error('Error creating job:', err);
-      // More detailed error handling
-      if (err.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
-      } else if (err.response?.data?.errors) {
-        // Handle validation errors array
-        const errorMessages = err.response.data.errors.map(error => error.msg || error.message).join(', ');
-        setErrorMsg(errorMessages || 'Failed to create job');
-      } else if (err.response?.status === 400) {
-        setErrorMsg('Invalid job data. Please check all required fields.');
-      } else {
-        setErrorMsg(err.response?.data?.message || 'Failed to create job');
-      }
-    } finally {
-      setActionLoading({ create: false });
-    }
-  };
-
-  const handleDeleteJob = async (jobId) => {
-    if (!window.confirm("Are you sure you want to delete this job?")) return;
-    
-    setActionLoading(prev => ({ ...prev, [jobId]: true }));
-    
-    try {
-      await api.delete(`/jobs/${jobId}`);
-      setSuccessMsg("Job deleted successfully");
-      loadJobs(); // Refresh the job list
-    } catch (err) {
-      console.error('Error deleting job:', err);
-      setErrorMsg(err.response?.data?.message || 'Failed to delete job');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [jobId]: false }));
-    }
   };
 
   const getStatusBadgeClass = (status) => {
@@ -195,6 +200,22 @@ export default function ManageJobs() {
     }
   };
 
+  const getJobTypeBadgeClass = (jobType) => {
+    const base = "px-2 py-1 rounded text-xs font-medium";
+    switch (jobType) {
+      case 'full-time':
+        return `${base} bg-blue-500/20 text-blue-300`;
+      case 'part-time':
+        return `${base} bg-purple-500/20 text-purple-300`;
+      case 'internship':
+        return `${base} bg-yellow-500/20 text-yellow-300`;
+      case 'contract':
+        return `${base} bg-green-500/20 text-green-300`;
+      default:
+        return `${base} bg-gray-500/20 text-gray-300`;
+    }
+  };
+
   const formatStatus = (status) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
@@ -207,14 +228,19 @@ export default function ManageJobs() {
     });
   };
 
+  const formatSalary = (salary) => {
+    if (!salary) return 'Not specified';
+    return `₹${salary.toLocaleString()}`;
+  };
+
   if (loading && jobs.length === 0) {
     return (
-      <LoadingScreen 
+      <LoadingScreen
         title="Loading Jobs"
         subtitle="Fetching your job postings..."
         steps={[
-          { text: "Retrieving jobs", color: "blue" },
-          { text: "Loading details", color: "purple" },
+          { text: "Retrieving job listings", color: "blue" },
+          { text: "Loading statistics", color: "purple" },
           { text: "Preparing interface", color: "green" }
         ]}
       />
@@ -223,7 +249,7 @@ export default function ManageJobs() {
 
   return (
     <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
-      <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
+      <div className="w-full max-w-7xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -231,8 +257,91 @@ export default function ManageJobs() {
               <h1 className="text-3xl font-bold text-white mb-2">Manage Jobs</h1>
               <p className="text-gray-400">Create, edit, and manage your job postings</p>
             </div>
+            <button
+              onClick={async () => {
+                // Refresh profile data and check if recruiter has company profile
+                console.log("Refreshing profile and checking company before creating job...");
+                try {
+                  // Force refresh the profile data
+                  await api.get("/profile");
+                  // Now check company profile
+                  const hasCompany = await checkCompanyProfile();
+                  console.log("Company profile check result:", hasCompany);
+                  if (!hasCompany) {
+                    setErrorMsg("You must create a company profile before posting jobs. Please create a company first.");
+                    return;
+                  }
+                } catch (err) {
+                  console.error("Error refreshing profile:", err);
+                  setErrorMsg("Error checking your profile. Please try again.");
+                  return;
+                }
+                setCurrentJob(null);
+                setShowCreateModal(true);
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Create New Job
+            </button>
           </div>
         </div>
+
+        {/* Statistics Cards */}
+        {Object.keys(stats).length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                  <BriefcaseIcon className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Total Jobs</p>
+                  <p className="text-xl font-semibold text-white">{stats.totalJobs || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Active</p>
+                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.active || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Inactive</p>
+                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.inactive || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Expired</p>
+                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.expired || 0}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success Message */}
         {successMsg && (
@@ -264,89 +373,710 @@ export default function ManageJobs() {
           </div>
         )}
 
-        {/* Create Job Form */}
-        {showCreateForm && (
-          <div className="mb-8 p-6 bg-white/5 rounded-xl border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Create New Job</h2>
-            <form onSubmit={handleCreateJob} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Job Title * <span className="text-red-400">*</span></label>
+        {/* Filters and Search */}
+        <div className="bg-white/5 rounded-lg border border-white/10 p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="lg:col-span-2">
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  value={newJob.title}
-                  onChange={(e) => setNewJob({...newJob, title: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. Software Engineer Intern"
-                  required
+                  placeholder="Search by title, role, or location..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
-              
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="expired">Expired</option>
+              </select>
+            </div>
+
+            {/* Job Type Filter */}
+            <div>
+              <select
+                value={filters.jobType}
+                onChange={(e) => handleFilterChange('jobType', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">All Types</option>
+                <option value="internship">Internship</option>
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Jobs List */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <MiniLoader size="lg" color="blue" />
+              <p className="text-gray-400 mt-2">Loading jobs...</p>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BriefcaseIcon className="w-8 h-8 text-gray-400" />
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-xl font-medium text-white mb-2">
+                  No jobs found
+                </h3>
+
+                <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
+                  {filters.search || filters.status || filters.jobType
+                    ? "No jobs match your current filters. Try adjusting your search criteria."
+                    : "You haven't posted any jobs yet. Create your first job posting to get started."
+                  }
+                </p>
+
+                {/* Clear Filters Button */}
+                {(filters.search || filters.status || filters.jobType) && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setFilters({
+                        page: 1,
+                        limit: 10,
+                        search: '',
+                        status: '',
+                        jobType: '',
+                        sortBy: 'createdAt',
+                        order: 'desc'
+                      })}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear filters
+                    </button>
+                  </div>
+                )}
+
+                {/* Create Job Button */}
+                {!filters.search && !filters.status && !filters.jobType && (
+                  <div className="mt-6">
+                    <button
+                      onClick={async () => {
+                        // Refresh profile data and check if recruiter has company profile
+                        console.log("Refreshing profile and checking company before creating job (no jobs found)...");
+                        try {
+                          // Force refresh the profile data
+                          await api.get("/profile");
+                          // Now check company profile
+                          const hasCompany = await checkCompanyProfile();
+                          console.log("Company profile check result:", hasCompany);
+                          if (!hasCompany) {
+                            setErrorMsg("You must create a company profile before posting jobs. Please create a company first.");
+                            return;
+                          }
+                        } catch (err) {
+                          console.error("Error refreshing profile:", err);
+                          setErrorMsg("Error checking your profile. Please try again.");
+                          return;
+                        }
+                        setCurrentJob(null);
+                        setShowCreateModal(true);
+                      }}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                      Create Your First Job
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            jobs.map(job => (
+              <div
+                key={job._id}
+                className="p-5 rounded-xl border bg-white/5 border-white/10 transition-all duration-300 hover:border-white/20"
+              >
+                <div className="flex flex-col md:flex-row md:items-start gap-4">
+                  {/* Job Info */}
+                  <div className="flex-1">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
+                      <div>
+                        <h3 className="font-semibold text-white text-lg mb-1">
+                          {job.title}
+                        </h3>
+                        <p className="text-gray-300">
+                          {job.role} at {job.company?.name || "Your Company"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={getStatusBadgeClass(job.status)}>
+                          {formatStatus(job.status)}
+                        </span>
+                        <span className={getJobTypeBadgeClass(job.jobType)}>
+                          {job.jobType?.replace('-', ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm mb-4">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <MapPinIcon className="w-4 h-4" />
+                        <span>{job.location}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <DollarSignIcon className="w-4 h-4" />
+                        <span>{formatSalary(job.salary)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>Posted: {formatDate(job.createdAt)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <ClockIcon className="w-4 h-4" />
+                        <span>
+                          {job.expiresAt
+                            ? `Expires: ${formatDate(job.expiresAt)}`
+                            : "No expiration"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-gray-300 text-sm line-clamp-2">
+                      {job.desc}
+                    </p>
+
+                    {job.skills && job.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {job.skills.slice(0, 5).map((skill, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {job.skills.length > 5 && (
+                          <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full border border-gray-500/30">
+                            +{job.skills.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2 md:items-end">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setCurrentJob(job);
+                          setShowEditModal(true);
+                        }}
+                        className="px-3 py-2 text-sm font-medium rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-1"
+                      >
+                        <EditIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => deleteJob(job._id)}
+                        disabled={actionLoading[job._id]}
+                        className="px-3 py-2 text-sm font-medium rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {actionLoading[job._id] ? (
+                          <MiniLoader size="xs" color="red" />
+                        ) : (
+                          <TrashIcon className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
+                    </div>
+
+                    <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-2">
+                      <EyeIcon className="w-4 h-4" />
+                      View Applications
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+            <div className="text-sm text-gray-400">
+              Showing {((pagination.currentPage - 1) * filters.limit) + 1} to {Math.min(pagination.currentPage * filters.limit, pagination.totalCount)} of {pagination.totalCount} jobs
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              <span className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">
+                {pagination.currentPage}
+              </span>
+
+              <button
+                onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create/Edit Job Modal */}
+      {(showCreateModal || showEditModal) && (
+        <JobModal
+          job={currentJob}
+          onClose={() => {
+            setShowCreateModal(false);
+            setShowEditModal(false);
+            setCurrentJob(null);
+          }}
+          onSave={() => {
+            setShowCreateModal(false);
+            setShowEditModal(false);
+            setCurrentJob(null);
+            setSuccessMsg(currentJob ? "Job updated successfully" : "Job created successfully");
+            loadJobs();
+            loadStats();
+          }}
+          onError={(message) => setErrorMsg(message)}
+          checkCompanyProfile={checkCompanyProfile} // Pass the function as a prop
+        />
+      )}
+    </div>
+  );
+}
+
+// Job Modal Component
+function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
+  const [formData, setFormData] = useState({
+    title: job?.title || '',
+    role: job?.role || '',
+    desc: job?.desc || '',
+    location: job?.location || '',
+    salary: job?.salary || '', // Keep as empty string initially
+    skills: job?.skills?.join(', ') || '',
+    jobType: job?.jobType || 'internship',
+    experienceLevel: job?.experienceLevel || 'entry',
+    isRemote: job?.isRemote || false,
+    expiresAt: job?.expiresAt ? new Date(job.expiresAt).toISOString().split('T')[0] : '',
+    applicationDeadline: job?.applicationDeadline ? new Date(job.applicationDeadline).toISOString().split('T')[0] : ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false); // New state for AI generation
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+
+    // Clear error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // New function to generate job description using AI
+  const generateJobDescription = async () => {
+    // Validate that we have the required fields
+    if (!formData.title.trim() || !formData.role.trim()) {
+      onError("Please enter a job title and role before generating a description");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      // Prepare data for AI generation
+      const requestData = {
+        title: formData.title.trim(),
+        role: formData.role.trim(),
+        location: formData.location.trim(),
+        jobType: formData.jobType,
+        experienceLevel: formData.experienceLevel,
+        isRemote: Boolean(formData.isRemote),
+        skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill)
+      };
+
+      // Call the AI generation endpoint
+      const res = await api.post("/jobs/generate-description", requestData);
+      
+      // Update the form data with the generated description
+      setFormData(prev => ({
+        ...prev,
+        desc: res.data.data.description
+      }));
+      
+      // Clear any previous errors for the description field
+      setFieldErrors(prev => ({
+        ...prev,
+        desc: ''
+      }));
+    } catch (err) {
+      console.error('Error generating job description:', err);
+      
+      // Handle different error cases
+      if (err.response?.status === 401) {
+        onError("Authentication required. Please log in again.");
+      } else if (err.response?.status === 403) {
+        onError("Access denied. You do not have permission to use this feature.");
+      } else if (err.response?.data?.error?.message) {
+        onError(err.response.data.error.message);
+      } else {
+        onError("Failed to generate job description. Please try again.");
+      }
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    // Required fields validation
+    if (!formData.title.trim()) {
+      errors.title = 'Job title is required';
+    } else if (formData.title.trim().length < 2) {
+      errors.title = 'Title must be at least 2 characters';
+    } else if (formData.title.trim().length > 100) {
+      errors.title = 'Title cannot exceed 100 characters';
+    }
+
+    if (!formData.role.trim()) {
+      errors.role = 'Role is required';
+    } else if (formData.role.trim().length < 2) {
+      errors.role = 'Role must be at least 2 characters';
+    } else if (formData.role.trim().length > 100) {
+      errors.role = 'Role cannot exceed 100 characters';
+    }
+
+    if (!formData.location.trim()) {
+      errors.location = 'Location is required';
+    }
+
+    if (!formData.desc.trim()) {
+      errors.desc = 'Job description is required';
+    } else if (formData.desc.trim().length < 20) {
+      errors.desc = 'Description must be at least 20 characters';
+    } else if (formData.desc.trim().length > 2000) {
+      errors.desc = 'Description cannot exceed 2000 characters';
+    }
+
+    // Salary is required in backend
+    if (formData.salary === '' || formData.salary === undefined || formData.salary === null) {
+      errors.salary = 'Salary is required';
+    } else {
+      const salaryValue = Number(formData.salary);
+      if (isNaN(salaryValue) || salaryValue < 0) {
+        errors.salary = 'Salary must be a valid positive number';
+      }
+    }
+
+    if (!formData.skills.trim()) {
+      errors.skills = 'At least one skill is required';
+    } else {
+      const skillsArray = formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+      if (skillsArray.length === 0) {
+        errors.skills = 'At least one skill is required';
+      } else if (skillsArray.length > 20) {
+        errors.skills = 'Maximum 20 skills allowed';
+      }
+    }
+
+    // Date validation
+    if (formData.expiresAt && formData.applicationDeadline) {
+      const expireDate = new Date(formData.expiresAt);
+      const deadlineDate = new Date(formData.applicationDeadline);
+
+      if (deadlineDate > expireDate) {
+        errors.applicationDeadline = 'Application deadline cannot be after job expiration';
+      }
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Check if recruiter has company profile before creating job
+      if (!job) { // Only check for new jobs, not updates
+        console.log("Checking company profile before job creation...");
+
+        const hasCompany = await checkCompanyProfile();
+
+        console.log("Company check result:", hasCompany);
+
+        // If check fails, show error
+        if (!hasCompany) {
+          throw new Error('NO_COMPANY_PROFILE');
+        }
+      }
+
+      // Prepare data for submission with proper formatting
+      const submitData = {
+        title: formData.title.trim(),
+        role: formData.role.trim(),
+        desc: formData.desc.trim(),
+        location: formData.location.trim(),
+        skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill),
+        jobType: formData.jobType || "internship",
+        experienceLevel: formData.experienceLevel || "entry",
+        isRemote: Boolean(formData.isRemote)
+      };
+
+      // Salary is required, so always include it
+      const salaryValue = Number(formData.salary);
+      if (!isNaN(salaryValue) && salaryValue >= 0) {
+        submitData.salary = salaryValue;
+      }
+
+      // Add optional fields only if they have values
+      if (formData.expiresAt) {
+        submitData.expiresAt = formData.expiresAt;
+      }
+
+      if (formData.applicationDeadline) {
+        submitData.applicationDeadline = formData.applicationDeadline;
+      }
+
+      console.log('Submitting job data:', submitData);
+
+      if (job) {
+        // Update existing job
+        await api.patch(`/jobs/${job._id}`, submitData);
+      } else {
+        // Create new job
+        await api.post("/jobs", submitData);
+      }
+
+      onSave();
+    } catch (err) {
+      console.error('Error saving job:', err);
+      console.error('Request failed with status:', err.response?.status);
+      console.error('Response data:', err.response?.data);
+
+      // Handle company profile check error
+      if (err.message === 'NO_COMPANY_PROFILE') {
+        onError("You must create a company profile before posting jobs. Please create a company first.");
+        return;
+      }
+
+      // Handle validation errors from backend
+      if (err.response?.data?.error?.code === 'VALIDATION_001') {
+        const backendErrors = err.response.data.data?.errors || [];
+        const errors = {};
+
+        backendErrors.forEach(error => {
+          errors[error.field] = error.message;
+        });
+
+        setFieldErrors(errors);
+        onError("Please correct the highlighted errors");
+      } else if (err.response?.data?.error?.code === 'JOB_001') {
+        // Handle missing required fields
+        const missingFields = err.response.data.data?.missingFields || {};
+        const errors = {};
+
+        Object.keys(missingFields).forEach(field => {
+          if (missingFields[field]) {
+            errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+          }
+        });
+
+        setFieldErrors(errors);
+        onError("Please fill in all required fields: " + Object.keys(missingFields).filter(field => missingFields[field]).join(", "));
+      } else if (err.response?.data?.error?.code === 'JOB_002') {
+        // Handle validation errors
+        const field = err.response.data.data?.field;
+        if (field) {
+          setFieldErrors({
+            [field]: `Invalid ${field}`
+          });
+          onError(`Please correct the ${field} field`);
+        } else {
+          onError("Invalid data provided");
+        }
+      } else if (err.response?.data?.error?.code === 'JOB_004') {
+        // Handle company-related errors
+        const message = err.response.data.data?.message || "You must create a company profile before posting jobs. Please verify your company profile is complete.";
+        onError(message);
+      } else if (err.response?.status === 400) {
+        // Log detailed error information for debugging
+        console.error('Bad Request Details:', {
+          status: err.response.status,
+          statusText: err.response.statusText,
+          data: err.response.data,
+          headers: err.response.headers
+        });
+
+        // Try to extract meaningful error message
+        const errorMessage = err.response.data?.error?.message ||
+          err.response.data?.message ||
+          err.response.data?.data?.message ||
+          "Invalid request. Please check your input and try again.";
+        onError(errorMessage || "Invalid request. Please check your input and try again.");
+      } else if (err.response?.status === 401) {
+        onError("Authentication required. Please log in again.");
+      } else if (err.response?.status === 403) {
+        onError("Access denied. You do not have permission to perform this action.");
+      } else {
+        onError(job ? "Failed to update job" : "Failed to create job");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-neutral-900 border border-white/10 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">
+              {job ? "Edit Job" : "Create New Job"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Role * <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Job Title *
+                </label>
                 <input
                   type="text"
-                  value={newJob.role}
-                  onChange={(e) => setNewJob({...newJob, role: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. Engineering"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
                   required
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.title ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  placeholder="e.g. Frontend Developer"
                 />
+                {fieldErrors.title && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.title}</p>
+                )}
               </div>
-              
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-400 mb-2">Description * <span className="text-red-400">*</span></label>
-                <textarea
-                  value={newJob.desc}
-                  onChange={(e) => setNewJob({...newJob, desc: e.target.value})}
-                  rows={4}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Detailed job description..."
-                  required
-                />
-              </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Location * <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Role *
+                </label>
                 <input
                   type="text"
-                  value={newJob.location}
-                  onChange={(e) => setNewJob({...newJob, location: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. New York, NY"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
                   required
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.role ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  placeholder="e.g. Software Engineer"
                 />
+                {fieldErrors.role && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.role}</p>
+                )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Salary * <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Location *
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.location ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  placeholder="e.g. Mumbai, India"
+                />
+                {fieldErrors.location && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.location}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Salary (₹) *
+                </label>
                 <input
                   type="number"
-                  value={newJob.salary}
-                  onChange={(e) => setNewJob({...newJob, salary: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. 50000"
+                  name="salary"
+                  value={formData.salary}
+                  onChange={handleChange}
                   required
+                  min="0"
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.salary ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  placeholder="e.g. 500000"
                 />
+                {fieldErrors.salary && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.salary}</p>
+                )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Skills * <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
-                  value={newJob.skills}
-                  onChange={(e) => setNewJob({...newJob, skills: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. JavaScript, React, Node.js (comma separated)"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Separate multiple skills with commas</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Job Type</label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Job Type
+                </label>
                 <select
-                  value={newJob.jobType}
-                  onChange={(e) => setNewJob({...newJob, jobType: e.target.value})}
+                  name="jobType"
+                  value={formData.jobType}
+                  onChange={handleChange}
                   className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   <option value="internship">Internship</option>
@@ -355,12 +1085,15 @@ export default function ManageJobs() {
                   <option value="contract">Contract</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Experience Level</label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Experience Level
+                </label>
                 <select
-                  value={newJob.experienceLevel}
-                  onChange={(e) => setNewJob({...newJob, experienceLevel: e.target.value})}
+                  name="experienceLevel"
+                  value={formData.experienceLevel}
+                  onChange={handleChange}
                   className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   <option value="entry">Entry Level</option>
@@ -369,336 +1102,139 @@ export default function ManageJobs() {
                   <option value="lead">Lead Level</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Application Deadline</label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Expiration Date
+                </label>
                 <input
                   type="date"
-                  value={newJob.applicationDeadline}
-                  onChange={(e) => setNewJob({...newJob, applicationDeadline: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  name="expiresAt"
+                  value={formData.expiresAt}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.expiresAt ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                 />
+                {fieldErrors.expiresAt && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.expiresAt}</p>
+                )}
               </div>
-              
-              <div className="flex items-center">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Application Deadline
+                </label>
                 <input
-                  type="checkbox"
-                  id="isRemote"
-                  checked={newJob.isRemote}
-                  onChange={(e) => setNewJob({...newJob, isRemote: e.target.checked})}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  type="date"
+                  name="applicationDeadline"
+                  value={formData.applicationDeadline}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.applicationDeadline ? 'border-red-500' : 'border-white/10'
+                    } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                 />
-                <label htmlFor="isRemote" className="ml-2 text-sm text-gray-400">Remote Work Available</label>
-              </div>
-              
-              <div className="md:col-span-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading.create}
-                  className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2 disabled:opacity-50"
-                >
-                  {actionLoading.create ? (
-                    <>
-                      <MiniLoader size="xs" color="white" />
-                      Creating...
-                    </>
-                  ) : "Create Job"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Filters and Jobs List - Only show when not creating a job */}
-        {!showCreateForm && (
-          <>
-            {/* Create Job Button */}
-            <div className="mb-6">
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
-              >
-                Create New Job
-              </button>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white/5 rounded-lg border border-white/10 p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Search jobs..."
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                
-                <div>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="expired">Expired</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <select
-                    value={filters.jobType}
-                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">All Types</option>
-                    <option value="internship">Internship</option>
-                    <option value="full-time">Full-time</option>
-                    <option value="part-time">Part-time</option>
-                    <option value="contract">Contract</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <select
-                    value={`${filters.sortBy}-${filters.order}`}
-                    onChange={(e) => {
-                      const [sortBy, order] = e.target.value.split('-');
-                      handleFilterChange('sortBy', sortBy);
-                      handleFilterChange('order', order);
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="createdAt-desc">Newest First</option>
-                    <option value="createdAt-asc">Oldest First</option>
-                    <option value="title-asc">Title (A-Z)</option>
-                    <option value="title-desc">Title (Z-A)</option>
-                  </select>
-                </div>
+                {fieldErrors.applicationDeadline && (
+                  <p className="mt-1 text-sm text-red-400">{fieldErrors.applicationDeadline}</p>
+                )}
               </div>
             </div>
 
-            {/* Jobs List */}
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-center py-8">
-                  <MiniLoader size="lg" color="blue" />
-                  <p className="text-gray-400 mt-2">Loading jobs...</p>
-                </div>
-              ) : jobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
-                    </svg>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <h3 className="text-xl font-medium text-white mb-2">
-                      No jobs found
-                    </h3>
-                    
-                    <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-                      {filters.search || filters.status || filters.jobType 
-                        ? "No jobs match your current filters. Try adjusting your search criteria."
-                        : "You haven't created any job postings yet."
-                      }
-                    </p>
-                    
-                    {!filters.search && !filters.status && !filters.jobType && (
-                      <button
-                        onClick={() => setShowCreateForm(true)}
-                        className="mt-4 py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
-                      >
-                        Create Your First Job
-                      </button>
-                    )}
-                    
-                    {/* Clear Filters Button */}
-                    {(filters.search || filters.status || filters.jobType) && (
-                      <div className="mt-4">
-                        <button
-                          onClick={() => setFilters({
-                            search: '',
-                            status: '',
-                            jobType: '',
-                            page: 1,
-                            limit: 10,
-                            sortBy: 'createdAt',
-                            order: 'desc'
-                          })}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all duration-200"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          Clear filters
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                jobs.map(job => (
-                  <div 
-                    key={job._id} 
-                    className="p-5 rounded-xl border bg-white/5 border-white/10 transition-all duration-300"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start gap-4">
-                      {/* Job Info */}
-                      <div className="flex-1">
-                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
-                          <div>
-                            <h3 className="font-semibold text-white text-lg mb-1">
-                              {job.title}
-                            </h3>
-                            <p className="text-gray-300 text-sm">
-                              {job.role} • {job.company?.name || "Company not specified"}
-                            </p>
-                          </div>
-                          
-                          <span className={getStatusBadgeClass(job.status)}>
-                            {formatStatus(job.status)}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm mb-4">
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span>{job.location}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>${job.salary.toLocaleString()}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
-                            </svg>
-                            <span className="capitalize">{job.jobType}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <p className="text-gray-300 text-sm line-clamp-2">
-                            {job.desc}
-                          </p>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2">
-                          {job.skills?.slice(0, 5).map((skill, index) => (
-                            <span 
-                              key={index} 
-                              className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {job.skills?.length > 5 && (
-                            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full border border-gray-500/30">
-                              +{job.skills.length - 5} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex flex-col gap-2 md:items-end">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              // TODO: Implement edit functionality
-                              alert("Edit functionality to be implemented");
-                            }}
-                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition"
-                          >
-                            Edit
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDeleteJob(job._id)}
-                            disabled={actionLoading[job._id]}
-                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600/20 border border-red-500/30 text-red-300 hover:bg-red-600/30 transition disabled:opacity-50 flex items-center gap-1"
-                          >
-                            {actionLoading[job._id] ? (
-                              <MiniLoader size="xs" color="red" />
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            )}
-                            Delete
-                          </button>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <a 
-                            href={`/recruiter/applications?jobId=${job._id}`}
-                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition"
-                          >
-                            View Applications
-                          </a>
-                          
-                          <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">
-                            Preview
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Skills (comma separated) *
+              </label>
+              <input
+                type="text"
+                name="skills"
+                value={formData.skills}
+                onChange={handleChange}
+                required
+                className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.skills ? 'border-red-500' : 'border-white/10'
+                  } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                placeholder="e.g. JavaScript, React, CSS, HTML"
+              />
+              {fieldErrors.skills && (
+                <p className="mt-1 text-sm text-red-400">{fieldErrors.skills}</p>
               )}
             </div>
 
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                <div className="text-sm text-gray-400">
-                  Showing {((pagination.currentPage - 1) * filters.limit) + 1} to {Math.min(pagination.currentPage * filters.limit, pagination.totalCount)} of {pagination.totalCount} jobs
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
-                    disabled={!pagination.hasPrevPage}
-                    className="px-3 py-2 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  
-                  <span className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">
-                    {pagination.currentPage}
-                  </span>
-                  
-                  <button
-                    onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
-                    disabled={!pagination.hasNextPage}
-                    className="px-3 py-2 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-400">
+                  Job Description *
+                </label>
+                <button
+                  type="button"
+                  onClick={generateJobDescription}
+                  disabled={aiLoading || !formData.title.trim() || !formData.role.trim()}
+                  className="text-xs px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-700 text-white rounded-lg hover:from-purple-700 hover:to-indigo-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  {aiLoading ? (
+                    <>
+                      <MiniLoader size="xs" color="white" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate with AI"
+                  )}
+                </button>
               </div>
-            )}
-          </>
-        )}
+              <textarea
+                name="desc"
+                value={formData.desc}
+                onChange={handleChange}
+                required
+                rows={6}
+                className={`w-full px-3 py-2 rounded-lg bg-neutral-800 border ${fieldErrors.desc ? 'border-red-500' : 'border-white/10'
+                  } text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                placeholder="Describe the job responsibilities, requirements, and benefits..."
+              />
+              {fieldErrors.desc && (
+                <p className="mt-1 text-sm text-red-400">{fieldErrors.desc}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                {formData.desc.length}/2000 characters
+              </p>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isRemote"
+                id="isRemote"
+                checked={formData.isRemote}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 bg-neutral-800 border-white/10 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <label htmlFor="isRemote" className="ml-2 text-sm text-gray-400">
+                This is a remote position
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <MiniLoader size="xs" color="white" />
+                    {job ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>{job ? "Update Job" : "Create Job"}</>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
