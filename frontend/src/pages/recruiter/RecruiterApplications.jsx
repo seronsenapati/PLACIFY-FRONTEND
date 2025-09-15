@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
@@ -51,10 +51,10 @@ export default function RecruiterApplications() {
 
   async function loadJobs() {
     try {
-      // Updated: Use the correct endpoint to get recruiter's jobs
+      // Use the correct endpoint to get recruiter's jobs
       const res = await api.get("/jobs/recruiter/my-jobs");
-      // Ensure jobs is always an array
-      const jobsData = Array.isArray(res.data.data) ? res.data.data : [];
+      // Ensure jobs is always an array by accessing data.jobs
+      const jobsData = Array.isArray(res.data.data.jobs) ? res.data.data.jobs : [];
       setJobs(jobsData);
       // Select the first job by default if available
       if (jobsData.length > 0) {
@@ -84,7 +84,6 @@ export default function RecruiterApplications() {
     
     try {
       const queryParams = new URLSearchParams();
-      // Removed duplicate jobId parameter
       if (filters.page) queryParams.append('page', filters.page);
       if (filters.limit) queryParams.append('limit', filters.limit);
       if (filters.status) queryParams.append('status', filters.status);
@@ -92,12 +91,12 @@ export default function RecruiterApplications() {
       if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
       if (filters.order) queryParams.append('order', filters.order);
 
-      // Updated: Use the correct endpoint for job applications
+      // Use the correct endpoint for job applications
       const res = await api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`);
       const data = res.data.data;
       setApplications(data.applications || []);
       setPagination(data.pagination || {});
-      // Updated: Extract statistics from the statistics field in the response
+      // Extract statistics from the statistics field in the response
       setStats(data.statistics || {});
     } catch (err) {
       console.error('Error loading applications:', err);

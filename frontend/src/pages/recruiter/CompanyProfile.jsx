@@ -12,6 +12,7 @@ export default function CompanyProfile() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [company, setCompany] = useState(null);
+  const [jobsCount, setJobsCount] = useState(0); // Add state for jobs count
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
@@ -146,6 +147,54 @@ export default function CompanyProfile() {
     fetchCompanyProfile();
   }, []);
 
+  // Fetch jobs count when company changes
+  useEffect(() => {
+    fetchJobsCount();
+  }, [company]);
+
+  // Add the fetchJobsCount function
+  async function fetchJobsCount() {
+    try {
+      console.log("[fetch jobs count] Starting to fetch jobs count");
+      
+      // If we don't have a company yet, set count to 0
+      if (!company || !company._id) {
+        console.log("[fetch jobs count] No company found, setting count to 0");
+        setJobsCount(0);
+        return;
+      }
+      
+      // Fetch all jobs for the recruiter
+      const res = await api.get(`/jobs/recruiter/my-jobs`);
+      console.log("[fetch jobs count] Response received:", res);
+      
+      if (res && res.data && res.data.data) {
+        const jobsData = res.data.data;
+        console.log("[fetch jobs count] Jobs data:", jobsData);
+        
+        // Following the same structure as ManageJobs.jsx
+        const jobs = jobsData.jobs || [];
+        console.log("[fetch jobs count] Extracted jobs array:", jobs);
+        
+        // Filter jobs by company ID
+        const companyJobs = jobs.filter(job => job.company && job.company._id === company._id);
+        console.log("[fetch jobs count] Company jobs:", companyJobs);
+        
+        const count = companyJobs.length;
+        console.log("[fetch jobs count] Jobs count:", count);
+        setJobsCount(count);
+      } else {
+        console.log("[fetch jobs count] Invalid response structure");
+        setJobsCount(0);
+      }
+    } catch (err) {
+      console.error("[fetch jobs count] Error:", err);
+      console.error("[fetch jobs count] Error response:", err.response);
+      setJobsCount(0);
+    }
+  }
+
+  // Update fetchCompanyProfile to also fetch jobs count
   async function fetchCompanyProfile() {
     try {
       setLoading(true);
@@ -571,6 +620,9 @@ export default function CompanyProfile() {
 
       setCompany(res.data.data);
       setSuccessMsg(isUpdating ? "Company profile updated successfully!" : "Company profile created successfully!");
+
+      // Fetch updated jobs count
+      await fetchJobsCount();
 
       // If we have a logo file waiting and just created a company, upload it now
       if (!isUpdating && logoFile) {
@@ -1162,7 +1214,7 @@ export default function CompanyProfile() {
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-amber-500/10">
                     <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.922-.755 1.688-1.538 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.922-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
                   </div>
                   <div>
@@ -1195,7 +1247,7 @@ export default function CompanyProfile() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Jobs Posted</p>
-                    <p className="text-xl font-bold">{company.jobs?.length || 0}</p>
+                    <p className="text-xl font-bold">{jobsCount}</p>
                   </div>
                 </div>
                 <div className="mt-4">

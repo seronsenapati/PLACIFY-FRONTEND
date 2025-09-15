@@ -11,7 +11,7 @@ import {
   Filter as FilterIcon,
   Calendar as CalendarIcon,
   MapPin as MapPinIcon,
-  DollarSign as DollarSignIcon,
+  Banknote as BanknoteIcon,
   Clock as ClockIcon,
   Users as UsersIcon,
   Briefcase as BriefcaseIcon
@@ -233,6 +233,33 @@ export default function ManageJobs() {
     return `₹${salary.toLocaleString()}`;
   };
 
+  const getDaysUntilExpiration = (expiresAt) => {
+    if (!expiresAt) return null;
+    
+    const expirationDate = new Date(expiresAt);
+    const today = new Date();
+    const diffTime = expirationDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  const getExpirationStatus = (expiresAt) => {
+    const daysUntilExpiration = getDaysUntilExpiration(expiresAt);
+    
+    if (daysUntilExpiration === null) return { text: 'No expiration', color: 'text-gray-400' };
+    
+    if (daysUntilExpiration < 0) {
+      return { text: 'Expired', color: 'text-red-400' };
+    } else if (daysUntilExpiration <= 3) {
+      return { text: `Expires in ${daysUntilExpiration} day${daysUntilExpiration !== 1 ? 's' : ''}`, color: 'text-red-400' };
+    } else if (daysUntilExpiration <= 7) {
+      return { text: `Expires in ${daysUntilExpiration} day${daysUntilExpiration !== 1 ? 's' : ''}`, color: 'text-yellow-400' };
+    } else {
+      return { text: `Expires in ${daysUntilExpiration} day${daysUntilExpiration !== 1 ? 's' : ''}`, color: 'text-green-400' };
+    }
+  };
+
   if (loading && jobs.length === 0) {
     return (
       <LoadingScreen
@@ -279,7 +306,8 @@ export default function ManageJobs() {
                 setCurrentJob(null);
                 setShowCreateModal(true);
               }}
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+              // Changed hover effect to blue
+              className="px-4 py-2.5 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2"
             >
               <PlusIcon className="w-5 h-5" />
               Create New Job
@@ -494,7 +522,8 @@ export default function ManageJobs() {
                         setCurrentJob(null);
                         setShowCreateModal(true);
                       }}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      // Changed hover effect to blue
+                      className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
                     >
                       <PlusIcon className="w-5 h-5" />
                       Create Your First Job
@@ -539,7 +568,8 @@ export default function ManageJobs() {
                       </div>
 
                       <div className="flex items-center gap-2 text-gray-400">
-                        <DollarSignIcon className="w-4 h-4" />
+                        {/* Changed to BanknoteIcon */}
+                        <BanknoteIcon className="w-4 h-4" />
                         <span>{formatSalary(job.salary)}</span>
                       </div>
 
@@ -552,7 +582,7 @@ export default function ManageJobs() {
                         <ClockIcon className="w-4 h-4" />
                         <span>
                           {job.expiresAt
-                            ? `Expires: ${formatDate(job.expiresAt)}`
+                            ? getExpirationStatus(job.expiresAt).text
                             : "No expiration"}
                         </span>
                       </div>
@@ -589,7 +619,7 @@ export default function ManageJobs() {
                           setCurrentJob(job);
                           setShowEditModal(true);
                         }}
-                        className="px-3 py-2 text-sm font-medium rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-1"
+                        className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-1"
                       >
                         <EditIcon className="w-4 h-4" />
                         <span className="hidden sm:inline">Edit</span>
@@ -598,7 +628,7 @@ export default function ManageJobs() {
                       <button
                         onClick={() => deleteJob(job._id)}
                         disabled={actionLoading[job._id]}
-                        className="px-3 py-2 text-sm font-medium rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {actionLoading[job._id] ? (
                           <MiniLoader size="xs" color="red" />
@@ -609,7 +639,13 @@ export default function ManageJobs() {
                       </button>
                     </div>
 
-                    <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        // Navigate to the applications page for this job
+                        window.location.href = `/recruiter/applications?jobId=${job._id}`;
+                      }}
+                      className="px-4 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-2"
+                    >
                       <EyeIcon className="w-4 h-4" />
                       View Applications
                     </button>
@@ -684,7 +720,7 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
     role: job?.role || '',
     desc: job?.desc || '',
     location: job?.location || '',
-    salary: job?.salary || '', // Keep as empty string initially
+    salary: job?.salary !== undefined && job?.salary !== null ? job.salary : '', // Handle 0 salary correctly
     skills: job?.skills?.join(', ') || '',
     jobType: job?.jobType || 'internship',
     experienceLevel: job?.experienceLevel || 'entry',
@@ -828,6 +864,17 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
       }
     }
 
+    // Add validation for expiration date to be in the future
+    if (formData.expiresAt) {
+      const expireDate = new Date(formData.expiresAt);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (expireDate < today) {
+        errors.expiresAt = 'Expiration date must be in the future';
+      }
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -863,7 +910,7 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
         role: formData.role.trim(),
         desc: formData.desc.trim(),
         location: formData.location.trim(),
-        skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill),
+        skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0),
         jobType: formData.jobType || "internship",
         experienceLevel: formData.experienceLevel || "entry",
         isRemote: Boolean(formData.isRemote)
@@ -873,6 +920,9 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
       const salaryValue = Number(formData.salary);
       if (!isNaN(salaryValue) && salaryValue >= 0) {
         submitData.salary = salaryValue;
+      } else {
+        // If salary is invalid, set it to 0
+        submitData.salary = 0;
       }
 
       // Add optional fields only if they have values
@@ -886,12 +936,20 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
 
       console.log('Submitting job data:', submitData);
 
+      // Debug: Log the actual request being made
+      console.log('Making API request...');
       if (job) {
+        console.log('PATCH request to:', `/jobs/${job._id}`);
+        console.log('Request data:', submitData);
         // Update existing job
-        await api.patch(`/jobs/${job._id}`, submitData);
+        const response = await api.patch(`/jobs/${job._id}`, submitData);
+        console.log('PATCH response:', response);
       } else {
+        console.log('POST request to:', "/jobs");
+        console.log('Request data:', submitData);
         // Create new job
-        await api.post("/jobs", submitData);
+        const response = await api.post("/jobs", submitData);
+        console.log('POST response:', response);
       }
 
       onSave();
@@ -899,6 +957,8 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
       console.error('Error saving job:', err);
       console.error('Request failed with status:', err.response?.status);
       console.error('Response data:', err.response?.data);
+      console.error('Request details:', err.request);
+      console.error('Config details:', err.config);
 
       // Handle company profile check error
       if (err.message === 'NO_COMPANY_PROFILE') {
@@ -958,12 +1018,17 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
         const errorMessage = err.response.data?.error?.message ||
           err.response.data?.message ||
           err.response.data?.data?.message ||
+          err.response.data?.error ||
           "Invalid request. Please check your input and try again.";
         onError(errorMessage || "Invalid request. Please check your input and try again.");
       } else if (err.response?.status === 401) {
         onError("Authentication required. Please log in again.");
       } else if (err.response?.status === 403) {
         onError("Access denied. You do not have permission to perform this action.");
+      } else if (err.response?.status === 500) {
+        onError("Server error. Please try again later or contact support.");
+      } else if (!err.response) {
+        onError("Network error. Please check your connection and try again.");
       } else {
         onError(job ? "Failed to update job" : "Failed to create job");
       }

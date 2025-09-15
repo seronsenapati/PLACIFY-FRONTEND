@@ -122,7 +122,7 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
                                   </div>
                                 ) : (
                                   <div className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                                    {link.badge}
+                                    {parseInt(link.badge) > 99 ? '99+' : link.badge}
                                   </div>
                                 )}
                               </div>
@@ -146,7 +146,7 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
                         <div className="flex items-center">
                           {link.badge && (
                             <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-xs rounded-full">
-                              {link.badge}
+                              {parseInt(link.badge) > 99 ? '99+' : link.badge}
                             </span>
                           )}
                           {/* Red dot for unread notifications in tooltip */}

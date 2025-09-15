@@ -155,10 +155,15 @@ export default function RecruiterNotifications() {
           </svg>
         );
       case 'job_expiring':
-      case 'job_expired':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'job_expired':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         );
       case 'system_message':
@@ -167,10 +172,10 @@ export default function RecruiterNotifications() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         );
-      case 'company_update':
+      case 'account_update':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         );
       default:
@@ -193,9 +198,56 @@ export default function RecruiterNotifications() {
   };
 
   const formatNotificationType = (type) => {
-    return type.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
+    switch (type) {
+      case 'job_expiring':
+        return 'Job Expiring';
+      case 'job_expired':
+        return 'Job Expired';
+      case 'new_application':
+        return 'New Application';
+      case 'system_message':
+        return 'System Message';
+      case 'account_update':
+        return 'Account Update';
+      default:
+        return type.split('_').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+    }
+  };
+
+  const renderJobExpirationDetails = (notification) => {
+    if (notification.type !== 'job_expiring' && notification.type !== 'job_expired') {
+      return null;
+    }
+
+    const jobId = notification.metadata?.jobId;
+    const daysLeft = notification.metadata?.daysLeft;
+    
+    return (
+      <div className="mt-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-blue-300 font-medium">
+              {notification.type === 'job_expiring' 
+                ? `This job expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}` 
+                : 'This job has expired'}
+            </p>
+          </div>
+          {jobId && (
+            <button
+              onClick={() => {
+                // Navigate to the job management page for this specific job
+                window.location.href = `/recruiter/manage-jobs?jobId=${jobId}`;
+              }}
+              className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
+            >
+              View Job
+            </button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (loading && notifications.length === 0) {
@@ -253,7 +305,7 @@ export default function RecruiterNotifications() {
 
         {/* Statistics Cards */}
         {stats && Object.keys(stats).length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -282,14 +334,31 @@ export default function RecruiterNotifications() {
             </div>
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Read</p>
-                  <p className="text-xl font-semibold text-white">{(stats.total || 0) - (stats.unread || 0)}</p>
+                  <p className="text-sm text-gray-400">Expiring Jobs</p>
+                  <p className="text-xl font-semibold text-white">
+                    {stats.byType?.find(t => t._id === 'job_expiring')?.unread || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Expired Jobs</p>
+                  <p className="text-xl font-semibold text-white">
+                    {stats.byType?.find(t => t._id === 'job_expired')?.unread || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -510,6 +579,9 @@ export default function RecruiterNotifications() {
                           <p className="text-gray-300 text-sm mb-3 leading-relaxed">
                             {notification.message}
                           </p>
+                          
+                          {/* Job expiration details for job-related notifications */}
+                          {renderJobExpirationDetails(notification)}
                           
                           <div className="flex flex-wrap items-center gap-3 text-xs">
                             <span className={`px-2 py-1 rounded-full border ${priorityColor}`}>
