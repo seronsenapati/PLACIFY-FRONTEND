@@ -1,13 +1,29 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { isLoggedIn, getRole } from "../utils/auth";
 
 export default function Landing() {
+  const navigate = useNavigate();
+  const loggedIn = isLoggedIn();
+  const role = getRole();
+
   const scrollToAbout = () => {
     document.getElementById("about-us")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleExploreJobs = () => {
+    // If user is logged in as a recruiter, redirect to their job management page
+    if (loggedIn && role === "recruiter") {
+      navigate("/recruiter/jobs");
+      return;
+    }
+    
+    // For students and all other users, go to job listings
+    navigate("/jobs");
   };
 
   return (
@@ -47,12 +63,12 @@ export default function Landing() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           {/* GET STARTED Button */}
-          <Link
-            to="/jobs"
+          <button
+            onClick={handleExploreJobs}
             className="bg-white text-black px-8 py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
             aria-label="Jobs and Explore Jobs"
           >
-            Explore Jobs
+            {loggedIn && role === "recruiter" ? "Manage Jobs" : "Explore Jobs"}
             <svg
               className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200"
               fill="none"
@@ -67,7 +83,7 @@ export default function Landing() {
                 d="M17 8l4 4m0 0l-4 4m4-4H3"
               />
             </svg>
-          </Link>
+          </button>
 
           {/* Know More Button */}
           <button
@@ -152,12 +168,12 @@ export default function Landing() {
             the right Opportunities
           </h1>
 
-          <Link
-            to="/jobs"
+          <button
+            onClick={handleExploreJobs}
             className="bg-white text-black px-6 py-2 rounded-full font-semibold text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
-            onClick={scrollToTop}
+            aria-label="Jobs and Explore Jobs"
           >
-            Explore Jobs
+            {loggedIn && role === "recruiter" ? "Manage Jobs" : "Explore Jobs"}
             <svg
               className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200"
               fill="none"
@@ -171,7 +187,7 @@ export default function Landing() {
                 d="M17 8l4 4m0 0l-4 4m4-4H3"
               />
             </svg>
-          </Link>
+          </button>
         </div>
       </section>
     </div>

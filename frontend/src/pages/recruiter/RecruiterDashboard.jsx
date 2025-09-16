@@ -20,6 +20,7 @@ export default function RecruiterDashboard() {
   const [fallbackStats, setFallbackStats] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [company, setCompany] = useState(null); // Simplified company state
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -32,6 +33,30 @@ export default function RecruiterDashboard() {
     }
   }, [errorMsg, successMsg]);
 
+  // Fetch company data directly to ensure we have complete information
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        const res = await api.get("/companies");
+        console.log("[Dashboard] Companies API response:", res);
+        if (res?.data?.data?.companies && res.data.data.companies.length > 0) {
+          // Get the first company (assuming recruiter has only one company)
+          const company = res.data.data.companies[0];
+          console.log("[Dashboard] Company data:", company);
+          console.log("[Dashboard] Company logo URL:", company?.logo);
+          setCompany(company);
+        } else {
+          console.log("[Dashboard] No companies found in response");
+        }
+      } catch (err) {
+        console.error("Failed to fetch company data:", err);
+        console.error("Error details:", err.response?.data || err.message);
+      }
+    };
+
+    fetchCompanyData();
+  }, []);
+
   useEffect(() => {
     loadDashboardData();
   }, [retryCount]);
@@ -43,15 +68,19 @@ export default function RecruiterDashboard() {
 
       // Try to load the main dashboard data first
       const res = await api.get("/dashboard/recruiter/overview");
-
+      console.log("[Dashboard] Main dashboard API response:", res);
+      
       // Validate response structure
       if (res && res.data && res.data.success) {
-        setDashboardData(res.data.data);
+        const dashboardData = res.data.data;
+        console.log("[Dashboard] Main dashboard data:", dashboardData);
+        setDashboardData(dashboardData);
       } else {
         throw new Error("Invalid response structure from server");
       }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
+      console.error("Error details:", err.response?.data || err.message);
 
       // If main dashboard fails, try to load fallback data
       try {
@@ -95,10 +124,22 @@ export default function RecruiterDashboard() {
     try {
       // Load jobs stats as fallback
       const [statsRes, jobsRes, profileRes, applicationsRes] = await Promise.all([
-        api.get("/jobs/recruiter/stats").catch(() => null),
-        api.get("/jobs/recruiter/my-jobs?limit=5").catch(() => null),
-        api.get("/profile").catch(() => null),
-        api.get("/applications/recruiter/stats").catch(() => null)
+        api.get("/jobs/recruiter/stats").catch(err => {
+          console.error("[Dashboard Fallback] Failed to fetch jobs stats:", err);
+          return null;
+        }),
+        api.get("/jobs/recruiter/my-jobs?limit=5").catch(err => {
+          console.error("[Dashboard Fallback] Failed to fetch jobs:", err);
+          return null;
+        }),
+        api.get("/profile").catch(err => {
+          console.error("[Dashboard Fallback] Failed to fetch profile:", err);
+          return null;
+        }),
+        api.get("/applications/recruiter/stats").catch(err => {
+          console.error("[Dashboard Fallback] Failed to fetch applications stats:", err);
+          return null;
+        })
       ]);
 
       const fallback = {
@@ -109,6 +150,7 @@ export default function RecruiterDashboard() {
         notifications: null // We don't have notifications in fallback
       };
 
+      console.log("[Dashboard Fallback] Final fallback data:", fallback);
       setFallbackStats(fallback);
     } catch (err) {
       console.error("Failed to load fallback dashboard data:", err);
@@ -220,12 +262,16 @@ export default function RecruiterDashboard() {
   const safeDashboardData = {
     jobs: dataToDisplay.jobs || {},
     applications: dataToDisplay.applications || {},
-    company: dataToDisplay.company || null,
+    company: company || dataToDisplay.company || null, // Prioritize separately fetched company data
     recentActivity: Array.isArray(dataToDisplay.recentActivity) ? dataToDisplay.recentActivity : [],
     notifications: dataToDisplay.notifications || null
   };
 
-  const { jobs, applications, company, recentActivity, notifications } = safeDashboardData;
+  const { jobs, applications, recentActivity, notifications } = safeDashboardData;
+  
+  // Debug company data
+  console.log("[Dashboard Render] Company data being used:", safeDashboardData.company);
+  console.log("[Dashboard Render] Company logo URL:", safeDashboardData.company?.logo);
 
   // Adjust stats based on available data
   const stats = [
@@ -323,7 +369,7 @@ export default function RecruiterDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Company Info */}
-          {company && (
+          {safeDashboardData.company && (
             <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden">
               <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
                 <h2 className="text-xl font-semibold">Company Profile</h2>
@@ -332,16 +378,17 @@ export default function RecruiterDashboard() {
 
               <div className="p-6">
                 <div className="flex items-center">
-                  <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
-                    {company?.logo ? (
+                  {/* Company Logo Display - Increased size */}
+                  <div className="w-32 h-32 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
+                    {safeDashboardData.company?.logo ? (
                       <img
-                        src={company.logo}
+                        src={safeDashboardData.company.logo}
                         alt="Company Logo"
                         className="w-full h-full object-contain"
                       />
                     ) : (
                       <svg
-                        className="w-12 h-12 text-gray-400"
+                        className="w-16 h-16 text-gray-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -356,9 +403,11 @@ export default function RecruiterDashboard() {
                     )}
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-lg font-bold">{company.name || "Company Name"}</h3>
-                    <p className="text-gray-400 text-sm">
-                      Profile Completeness: {company.profileCompleteness !== undefined ? `${company.profileCompleteness}%` : "N/A"}
+                    {/* Increased company name size */}
+                    <h3 className="text-2xl font-bold">{safeDashboardData.company.name || "Company Name"}</h3>
+                    {/* Increased profile completion text size */}
+                    <p className="text-lg text-gray-400">
+                      Profile Completeness: {safeDashboardData.company.profileCompleteness !== undefined ? `${safeDashboardData.company.profileCompleteness}%` : "N/A"}
                     </p>
                   </div>
                 </div>
@@ -378,6 +427,7 @@ export default function RecruiterDashboard() {
                   </button>
                 </div>
               </div>
+
             </section>
           )}
 
