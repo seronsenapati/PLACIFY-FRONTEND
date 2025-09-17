@@ -511,7 +511,7 @@ export default function JobListing() {
                           <button 
                             onClick={() => handleApply(jobId)}
                             disabled={isApplied}
-                            className={`px-4 py-2 font-semibold rounded-full border transition ${
+                            className={`px-4 py-2 font-semibold rounded-full border transition flex items-center justify-center ${
                               isApplied
                                 ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
                                 : "bg-white/10 border-white/30 text-white hover:bg-green-500/20 hover:border-green-500/50"
@@ -519,8 +519,8 @@ export default function JobListing() {
                           >
                             {isApplied ? (
                               <>
-                                <Check className="w-4 h-4 mr-1" />
-                                Applied
+                                <Check className="w-4 h-4 mr-1 flex-shrink-0" />
+                                <span>Applied</span>
                               </>
                             ) : (
                               "Apply Now"
@@ -686,7 +686,7 @@ export default function JobListing() {
                         }
                       }}
                       disabled={applied.has(selectedJob._id || selectedJob.id)}
-                      className={`px-4 py-2.5 font-semibold rounded-lg border transition ${
+                      className={`px-4 py-2.5 font-semibold rounded-lg border transition flex items-center justify-center ${
                         applied.has(selectedJob._id || selectedJob.id)
                           ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
                           : "bg-green-600 hover:bg-green-500 text-white"
@@ -694,8 +694,8 @@ export default function JobListing() {
                     >
                       {applied.has(selectedJob._id || selectedJob.id) ? (
                         <>
-                          <Check className="w-4 h-4 mr-1 inline" />
-                          Applied
+                          <Check className="w-4 h-4 mr-1 flex-shrink-0" />
+                          <span>Applied</span>
                         </>
                       ) : (
                         "Apply Now"

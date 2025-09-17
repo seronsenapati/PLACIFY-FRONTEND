@@ -1,9 +1,22 @@
 // src/pages/student/StudentSavedJobs.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
-import { Bookmark, Trash2, Briefcase, MapPin, Building, Search } from "lucide-react";
+import { 
+  Bookmark, 
+  Trash2, 
+  Briefcase, 
+  MapPin, 
+  Building, 
+  Search,
+  User,
+  Banknote,
+  Users,
+  Eye,
+  Check
+} from "lucide-react";
 
 export default function StudentSavedJobs() {
   const [items, setItems] = useState([]);
@@ -12,6 +25,8 @@ export default function StudentSavedJobs() {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [applied, setApplied] = useState(new Set());
+  const navigate = useNavigate();
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -31,14 +46,29 @@ export default function StudentSavedJobs() {
   async function load() {
     setLoading(true);
     try {
-      const res = await api.get("/bookmarks");
-      // Ensure we're working with an array
-      const savedJobsData = Array.isArray(res.data) ? res.data : [];
-      setItems(savedJobsData);
+      // Fetch bookmarks and applications in parallel
+      const requests = [
+        api.get("/bookmarks"),
+        api.get("/applications/student")
+      ];
+      
+      const [bookmarksRes, applicationsRes] = await Promise.all(requests);
+      
+      // Process bookmarks data
+      const bookmarksData = Array.isArray(bookmarksRes.data) 
+        ? bookmarksRes.data 
+        : (bookmarksRes.data?.data || []);
+      setItems(bookmarksData);
+      
+      // Process applications data
+      const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+      const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+      setApplied(aSet);
     } catch (err) {
       console.error(err);
       setErrorMsg("Failed to load saved jobs");
       setItems([]); // Set to empty array on error
+      setApplied(new Set()); // Reset applications on error
     } finally {
       setLoading(false);
     }
@@ -60,16 +90,80 @@ export default function StudentSavedJobs() {
     }
   }
 
-  // Filter items based on search term - ensure items is an array
-  const filteredItems = Array.isArray(items) ? items.filter(item => {
-    const job = item.job || item;
-    const title = job.title?.toLowerCase() || "";
-    const company = job.company?.toLowerCase() || "";
-    const location = job.location?.toLowerCase() || "";
-    const search = searchTerm.toLowerCase();
+  const handleApply = async (jobId) => {
+    // Check if user has already applied to this job
+    if (applied.has(jobId)) {
+      setErrorMsg('You have already applied to this job');
+      return;
+    }
     
-    return title.includes(search) || company.includes(search) || location.includes(search);
-  }) : [];
+    try {
+      // Apply to job
+      await api.post(`/jobs/${jobId}/apply`);
+      setSuccessMsg("Application submitted successfully");
+      
+      // Add job to applied set
+      setApplied(prev => new Set(prev).add(jobId));
+    } catch (err) {
+      console.error(err);
+      let errorMessage = '';
+      if (err.response) {
+        if (err.response.status === 400 || err.response.status === 409) {
+          // Handle both 400 and 409 errors for already applied cases
+          if (err.response.data && err.response.data.message && 
+              typeof err.response.data.message === 'string' &&
+              err.response.data.message.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (err.response.data && err.response.data.error && 
+                     typeof err.response.data.error === 'string' &&
+                     err.response.data.error.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (typeof err.response.data === 'string' && 
+                     err.response.data.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (JSON.stringify(err.response.data).toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else {
+            if (err.response.status === 409) {
+              errorMessage = 'You have already applied to this job';
+            } else {
+              errorMessage = 'Unable to apply for this job. Please try again later.';
+            }
+          }
+        } else if (err.response.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+          localStorage.removeItem('token');
+          navigate('/login');
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied. Only students can apply for jobs.';
+        } else if (err.response.status === 404) {
+          errorMessage = 'Job not found.';
+        } else {
+          errorMessage = `Server error: ${err.response.status} - ${err.response.statusText}`;
+        }
+      } else if (err.request) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Failed to apply for job. Please try again.';
+      }
+      setErrorMsg(errorMessage);
+    }
+  };
+
+  // Filter items based on search term - ensure items is an array
+  const filteredItems = useMemo(() => {
+    if (!Array.isArray(items)) return [];
+    
+    return items.filter(item => {
+      const job = item.job || item;
+      const title = job.title?.toLowerCase() || "";
+      const company = (job.company?.name || job.createdBy?.name || job.company || "").toLowerCase();
+      const location = job.location?.toLowerCase() || "";
+      const search = searchTerm.toLowerCase();
+      
+      return title.includes(search) || company.includes(search) || location.includes(search);
+    });
+  }, [items, searchTerm]);
 
   // Ensure items is an array for statistics
   const validItems = Array.isArray(items) ? items : [];
@@ -213,57 +307,109 @@ export default function StudentSavedJobs() {
             filteredItems.map((item) => {
               const job = item.job || item;
               const jobId = job.id || job._id;
+              const isApplied = applied.has(jobId);
               
               return (
                 <div 
                   key={jobId} 
-                  className="p-5 rounded-xl border transition-all duration-300 bg-white/5 border-white/10 hover:border-white/20"
+                  className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-5"
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center mr-4">
-                          <Briefcase className="w-6 h-6 text-blue-400" />
+                    <div className="flex-1">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Building className="w-6 h-6 text-blue-400" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-white truncate">
-                            {job.title}
-                          </h3>
-                          <div className="flex flex-wrap items-center mt-1 text-sm">
-                            <span className="flex items-center text-blue-300 mr-4">
-                              <Building className="w-4 h-4 mr-1" />
-                              {job.company}
-                            </span>
-                            <span className="flex items-center text-gray-400">
-                              <MapPin className="w-4 h-4 mr-1" />
-                              {job.location}
-                            </span>
-                          </div>
-                          {job.description && (
-                            <p className="mt-2 text-sm text-gray-300 line-clamp-2">
-                              {job.description}
-                            </p>
-                          )}
-                          {job.savedAt && (
-                            <p className="mt-2 text-xs text-gray-500">
-                              Saved on {new Date(job.savedAt).toLocaleDateString()}
-                            </p>
-                          )}
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{job.title}</h3>
+                          <p className="text-gray-300">{job.company?.name || job.createdBy?.name || job.company || 'Company Name'}</p>
                         </div>
                       </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">{job.location || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Briefcase className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300 capitalize">{job.jobType || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <User className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300 capitalize">{job.experienceLevel || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Banknote className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">{job.salary ? `₹${job.salary.toLocaleString()}` : 'Not disclosed'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">
+                            {job.role || 'Role not specified'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {job.skills && job.skills.slice(0, 5).map((skill, index) => (
+                          <span key={index} className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
+                            {skill}
+                          </span>
+                        ))}
+                        {job.skills && job.skills.length > 5 && (
+                          <span className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
+                            +{job.skills.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                      
+                      {item.savedAt && (
+                        <p className="mt-3 text-xs text-gray-500">
+                          Saved on {new Date(item.savedAt).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                     
-                    <button
-                      onClick={() => remove(jobId)}
-                      disabled={actionLoading[jobId]}
-                      className="ml-4 flex-shrink-0 py-2 px-3 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 transition-all duration-300 disabled:opacity-50"
-                    >
-                      {actionLoading[jobId] ? (
-                        <MiniLoader size="sm" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
+                    <div className="flex flex-col items-end gap-3 ml-4">
+                      <button
+                        onClick={() => remove(jobId)}
+                        disabled={actionLoading[jobId]}
+                        className="p-2 rounded-lg border border-white/30 text-white bg-white/10 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 transition-all duration-300 disabled:opacity-50"
+                        title="Remove from saved jobs"
+                      >
+                        {actionLoading[jobId] ? (
+                          <MiniLoader size="sm" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => {}}
+                        className="px-4 py-2 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </button>
+                      <button 
+                        onClick={() => handleApply(jobId)}
+                        disabled={isApplied}
+                        className={`px-4 py-2 font-semibold rounded-full border transition flex items-center justify-center ${
+                          isApplied
+                            ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
+                            : "bg-white/10 border-white/30 text-white hover:bg-green-500/20 hover:border-green-500/50"
+                        }`}
+                      >
+                        {isApplied ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1 flex-shrink-0" />
+                            <span>Applied</span>
+                          </>
+                        ) : (
+                          "Apply Now"
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

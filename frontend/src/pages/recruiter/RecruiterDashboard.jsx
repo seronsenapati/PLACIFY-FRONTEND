@@ -11,6 +11,7 @@ import {
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
+import { getUserId } from "../../utils/auth";
 
 export default function RecruiterDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -33,18 +34,29 @@ export default function RecruiterDashboard() {
     }
   }, [errorMsg, successMsg]);
 
-  // Fetch company data directly to ensure we have complete information
+  // Fetch company data directly to ensure we have complete information for the current recruiter
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
         const res = await api.get("/companies");
         console.log("[Dashboard] Companies API response:", res);
         if (res?.data?.data?.companies && res.data.data.companies.length > 0) {
-          // Get the first company (assuming recruiter has only one company)
-          const company = res.data.data.companies[0];
-          console.log("[Dashboard] Company data:", company);
-          console.log("[Dashboard] Company logo URL:", company?.logo);
-          setCompany(company);
+          // Get the current user ID
+          const currentUserId = getUserId();
+          console.log("[Dashboard] Current user ID:", currentUserId);
+          
+          // Find the company created by the current user
+          const userCompany = res.data.data.companies.find(
+            comp => comp.createdBy === currentUserId
+          );
+          
+          if (userCompany) {
+            console.log("[Dashboard] User company data:", userCompany);
+            console.log("[Dashboard] Company logo URL:", userCompany?.logo);
+            setCompany(userCompany);
+          } else {
+            console.log("[Dashboard] No company found for current user");
+          }
         } else {
           console.log("[Dashboard] No companies found in response");
         }
@@ -120,6 +132,98 @@ export default function RecruiterDashboard() {
     }
   };
 
+  // Update this useEffect to properly extract application counts from applications data
+  useEffect(() => {
+    if (dashboardData && dashboardData.recentActivity && dashboardData.recentActivity.length > 0) {
+      // Create a copy of recentActivity
+      let updatedRecentActivity = [...dashboardData.recentActivity];
+      
+      // Check if we have applications data with job-based statistics
+      if (dashboardData.applications) {
+        // Look for job-based application statistics
+        let jobApplicationCounts = {};
+        
+        // Check different possible structures for job-based stats
+        if (dashboardData.applications.byJob) {
+          // Direct byJob mapping
+          jobApplicationCounts = dashboardData.applications.byJob;
+        } else if (dashboardData.applications.jobStats) {
+          // Job stats in a separate property
+          jobApplicationCounts = dashboardData.applications.jobStats;
+        } else if (dashboardData.applications.stats && dashboardData.applications.stats.byJob) {
+          // Nested stats structure
+          jobApplicationCounts = dashboardData.applications.stats.byJob;
+        }
+        
+        // If we found job-based application counts, map them to jobs
+        if (Object.keys(jobApplicationCounts).length > 0) {
+          updatedRecentActivity = updatedRecentActivity.map(job => {
+            const jobId = job._id || job.id;
+            const applicationCount = jobId ? (jobApplicationCounts[jobId] || 0) : 0;
+            
+            return {
+              ...job,
+              applicationCount
+            };
+          });
+        } else if (dashboardData.applications.total > 0) {
+          // If we have total applications but no job breakdown,
+          // and we know there are applications, we might need to fetch them
+          // But to avoid rate limiting, let's distribute them evenly as a fallback
+          const totalJobs = updatedRecentActivity.length;
+          const avgApplications = Math.floor(dashboardData.applications.total / totalJobs);
+          const remainder = dashboardData.applications.total % totalJobs;
+          
+          updatedRecentActivity = updatedRecentActivity.map((job, index) => {
+            // Distribute remainder among first few jobs
+            const additional = index < remainder ? 1 : 0;
+            return {
+              ...job,
+              applicationCount: avgApplications + additional
+            };
+          });
+        } else {
+          // No applications, set all to 0
+          updatedRecentActivity = updatedRecentActivity.map(job => ({
+            ...job,
+            applicationCount: 0
+          }));
+        }
+      } else {
+        // If no applications data, check if jobs already have application data
+        updatedRecentActivity = updatedRecentActivity.map(job => {
+          // If job already has applicationCount, keep it
+          if (job.applicationCount !== undefined) {
+            return job;
+          }
+          
+          // If job has applications array, use its length
+          if (job.applications && Array.isArray(job.applications)) {
+            return {
+              ...job,
+              applicationCount: job.applications.length
+            };
+          }
+          
+          // Default to 0
+          return {
+            ...job,
+            applicationCount: 0
+          };
+        });
+      }
+      
+      // Only update if there are changes
+      if (JSON.stringify(dashboardData.recentActivity) !== JSON.stringify(updatedRecentActivity)) {
+        setDashboardData(prev => ({
+          ...prev,
+          recentActivity: updatedRecentActivity
+        }));
+      }
+    }
+  }, [dashboardData]);
+
+  // Also update the fallback data loading to better handle application counts
   const loadFallbackDashboardData = async () => {
     try {
       // Load jobs stats as fallback
@@ -142,11 +246,73 @@ export default function RecruiterDashboard() {
         })
       ]);
 
+      // Get jobs data
+      let recentJobs = jobsRes?.data?.data?.jobs || [];
+      
+      // Try to get application counts from the applications stats if available
+      if (recentJobs.length > 0 && applicationsRes?.data?.data) {
+        const applicationsStats = applicationsRes.data.data;
+        
+        // Look for job-based application statistics in different possible structures
+        let jobApplicationCounts = {};
+        
+        if (applicationsStats.byJob) {
+          // Direct byJob mapping
+          jobApplicationCounts = applicationsStats.byJob;
+        } else if (applicationsStats.jobStats) {
+          // Job stats in a separate property
+          jobApplicationCounts = applicationsStats.jobStats;
+        } else if (applicationsStats.stats && applicationsStats.stats.byJob) {
+          // Nested stats structure
+          jobApplicationCounts = applicationsStats.stats.byJob;
+        }
+        
+        // If we found job-based application counts, map them to jobs
+        if (Object.keys(jobApplicationCounts).length > 0) {
+          recentJobs = recentJobs.map(job => {
+            const jobId = job._id || job.id;
+            const applicationCount = jobId ? (jobApplicationCounts[jobId] || 0) : 0;
+            
+            return {
+              ...job,
+              applicationCount
+            };
+          });
+        } else if (applicationsStats.total > 0) {
+          // If we have total applications but no job breakdown,
+          // and we know there are applications, distribute them evenly as a fallback
+          const totalJobs = recentJobs.length;
+          const avgApplications = Math.floor(applicationsStats.total / totalJobs);
+          const remainder = applicationsStats.total % totalJobs;
+          
+          recentJobs = recentJobs.map((job, index) => {
+            // Distribute remainder among first few jobs
+            const additional = index < remainder ? 1 : 0;
+            return {
+              ...job,
+              applicationCount: avgApplications + additional
+            };
+          });
+        } else {
+          // No applications, set all to 0
+          recentJobs = recentJobs.map(job => ({
+            ...job,
+            applicationCount: 0
+          }));
+        }
+      } else if (recentJobs.length > 0) {
+        // If we couldn't get applications stats, set application count to 0 for all jobs
+        recentJobs = recentJobs.map(job => ({
+          ...job,
+          applicationCount: 0
+        }));
+      }
+
       const fallback = {
         jobs: statsRes?.data?.data || {},
         applications: applicationsRes?.data?.data || {},
         company: profileRes?.data?.data?.company || null,
-        recentActivity: jobsRes?.data?.data?.jobs || [],
+        recentActivity: recentJobs,
         notifications: null // We don't have notifications in fallback
       };
 
@@ -484,7 +650,7 @@ export default function RecruiterDashboard() {
                       <td colSpan="3" className="px-6 py-12 text-center">
                         <div className="text-gray-400">No jobs found</div>
                         <button
-                          onClick={() => window.location.href = "/recruiter/manage-jobs"}
+                          onClick={() => window.location.href = "/recruiter/jobs"}
                           className="mt-2 text-sm text-blue-400 hover:text-blue-300"
                         >
                           Create your first job

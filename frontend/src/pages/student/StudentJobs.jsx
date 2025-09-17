@@ -1,13 +1,26 @@
 // src/pages/student/StudentJobs.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
-import { Search, MapPin, Building, Briefcase } from "lucide-react";
+import { 
+  Search, 
+  MapPin, 
+  Building, 
+  Briefcase, 
+  Bookmark as BookmarkIcon,
+  User,
+  Banknote,
+  Users,
+  Eye,
+  Check
+} from "lucide-react";
 
 export default function StudentJobs() {
   const [jobs, setJobs] = useState([]);
   const [bookmarked, setBookmarked] = useState(new Set());
+  const [applied, setApplied] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
@@ -15,6 +28,7 @@ export default function StudentJobs() {
   const [applying, setApplying] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const navigate = useNavigate();
   
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -30,28 +44,45 @@ export default function StudentJobs() {
   useEffect(() => {
     (async () => {
       try {
-        const [jobsRes, bookmarksRes] = await Promise.all([
+        // Fetch jobs, bookmarks, and applications in parallel
+        const requests = [
           api.get("/jobs"),
           api.get("/bookmarks"),
-        ]);
+          api.get("/applications/student")
+        ];
         
-        // Ensure jobs data is an array
-        const jobsData = Array.isArray(jobsRes.data) 
-          ? jobsRes.data 
-          : (jobsRes.data?.jobs || []);
+        const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
+        
+        // Process jobs data
+        let jobsData = [];
+        if (jobsRes.data.data && Array.isArray(jobsRes.data.data.jobs)) {
+          jobsData = jobsRes.data.data.jobs;
+        } else if (jobsRes.data.jobs) {
+          jobsData = jobsRes.data.jobs;
+        } else if (Array.isArray(jobsRes.data)) {
+          jobsData = jobsRes.data;
+        } else if (jobsRes.data.data && Array.isArray(jobsRes.data.data)) {
+          jobsData = jobsRes.data.data;
+        }
         setJobs(jobsData);
         
-        // Ensure bookmarks data is an array
+        // Process bookmarks data
         const bookmarksData = Array.isArray(bookmarksRes.data) 
           ? bookmarksRes.data 
           : (bookmarksRes.data?.data || []);
         const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
         setBookmarked(bSet);
+        
+        // Process applications data
+        const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+        const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+        setApplied(aSet);
       } catch (err) {
         console.error(err);
         setErrorMsg("Failed to load jobs");
         setJobs([]); // Set to empty array on error
         setBookmarked(new Set()); // Reset bookmarks on error
+        setApplied(new Set()); // Reset applications on error
       } finally {
         setLoading(false);
       }
@@ -66,7 +97,7 @@ export default function StudentJobs() {
     
     const q = query.trim().toLowerCase();
     return jobs.filter((j) => {
-      const okQ = !q || (j.title && j.title.toLowerCase().includes(q)) || (j.company && j.company.toLowerCase().includes(q));
+      const okQ = !q || (j.title && j.title.toLowerCase().includes(q)) || (j.company?.name && j.company.name.toLowerCase().includes(q)) || (j.createdBy?.name && j.createdBy.name.toLowerCase().includes(q));
       const okLoc = !location || (j.location && j.location.toLowerCase().includes(location.toLowerCase()));
       const okType = !type || (j.jobType && j.jobType.toLowerCase() === type.toLowerCase());
       return okQ && okLoc && okType;
@@ -93,17 +124,64 @@ export default function StudentJobs() {
     }
   };
 
-  const applyToJob = async (job) => {
-    const id = job.id || job._id;
-    setApplying(id);
+  const handleApply = async (jobId) => {
+    // Check if user has already applied to this job
+    if (applied.has(jobId)) {
+      setErrorMsg('You have already applied to this job');
+      return;
+    }
+    
+    setApplying(jobId);
     try {
       // If backend requires resume upload, you can present a modal with file input; here we assume server uses stored resume or allows empty body
-      await api.post(`/jobs/${id}/apply`);
+      await api.post(`/jobs/${jobId}/apply`);
       setSuccessMsg("Application submitted successfully");
-      // optional: show notification/toast
+      
+      // Add job to applied set
+      setApplied(prev => new Set(prev).add(jobId));
     } catch (err) {
       console.error(err);
-      setErrorMsg("Failed to apply for job");
+      let errorMessage = '';
+      if (err.response) {
+        if (err.response.status === 400 || err.response.status === 409) {
+          // Handle both 400 and 409 errors for already applied cases
+          if (err.response.data && err.response.data.message && 
+              typeof err.response.data.message === 'string' &&
+              err.response.data.message.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (err.response.data && err.response.data.error && 
+                     typeof err.response.data.error === 'string' &&
+                     err.response.data.error.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (typeof err.response.data === 'string' && 
+                     err.response.data.toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else if (JSON.stringify(err.response.data).toLowerCase().includes('already')) {
+            errorMessage = 'You have already applied to this job';
+          } else {
+            if (err.response.status === 409) {
+              errorMessage = 'You have already applied to this job';
+            } else {
+              errorMessage = 'Unable to apply for this job. Please try again later.';
+            }
+          }
+        } else if (err.response.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+          localStorage.removeItem('token');
+          navigate('/login');
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied. Only students can apply for jobs.';
+        } else if (err.response.status === 404) {
+          errorMessage = 'Job not found.';
+        } else {
+          errorMessage = `Server error: ${err.response.status} - ${err.response.statusText}`;
+        }
+      } else if (err.request) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Failed to apply for job. Please try again.';
+      }
+      setErrorMsg(errorMessage);
     } finally {
       setApplying(null);
     }
@@ -255,85 +333,103 @@ export default function StudentJobs() {
             </div>
           ) : (
             filtered.map((job) => {
-              const id = job.id || job._id;
-              const isBook = bookmarked.has(id);
+              const jobId = job._id || job.id;
+              const isBookmarked = bookmarked.has(jobId);
+              const isApplied = applied.has(jobId);
               return (
-                <div key={id} className="p-5 rounded-xl border transition-all duration-300 bg-white/5 border-white/10 hover:border-white/20">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center mr-4">
-                          <Briefcase className="w-6 h-6 text-blue-400" />
+                <div 
+                  key={jobId} 
+                  className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-5"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Building className="w-6 h-6 text-blue-400" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-white truncate">
-                            {job.title}
-                          </h3>
-                          <div className="flex flex-wrap items-center mt-1 text-sm">
-                            <span className="flex items-center text-blue-300 mr-4">
-                              <Building className="w-4 h-4 mr-1" />
-                              {job.company}
-                            </span>
-                            <span className="flex items-center text-gray-400">
-                              <MapPin className="w-4 h-4 mr-1" />
-                              {job.location}
-                            </span>
-                          </div>
-                          {job.desc && (
-                            <p className="mt-2 text-sm text-gray-300 line-clamp-2">
-                              {job.desc}
-                            </p>
-                          )}
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {Array.isArray(job.skills) && job.skills.slice(0, 3).map((s,i)=>(
-                              <span key={i} className="px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs">
-                                {s}
-                              </span>
-                            ))}
-                            {Array.isArray(job.skills) && job.skills.length > 3 && (
-                              <span className="px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs">
-                                +{job.skills.length - 3} more
-                              </span>
-                            )}
-                          </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{job.title}</h3>
+                          <p className="text-gray-300">{job.company?.name || job.createdBy?.name || 'Company Name'}</p>
                         </div>
                       </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">{job.location || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Briefcase className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300 capitalize">{job.jobType || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <User className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300 capitalize">{job.experienceLevel || 'Not specified'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Banknote className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">{job.salary ? `₹${job.salary.toLocaleString()}` : 'Not disclosed'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-300">
+                            {job.role || 'Role not specified'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {job.skills && job.skills.slice(0, 5).map((skill, index) => (
+                          <span key={index} className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
+                            {skill}
+                          </span>
+                        ))}
+                        {job.skills && job.skills.length > 5 && (
+                          <span className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
+                            +{job.skills.length - 5} more
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    
                     <div className="flex flex-col items-end gap-3 ml-4">
                       <button 
-                        onClick={()=>toggleBookmark(job)} 
-                        className={`py-2 px-4 rounded-lg border text-xs font-semibold transition ${isBook ? "border-yellow-400 text-yellow-300 bg-yellow-400/10" : "border-white/30 text-white bg-white/10 hover:bg-white/20"}`}
+                        onClick={() => toggleBookmark(job)}
+                        className={`p-2 rounded-lg border ${
+                          isBookmarked 
+                            ? "border-yellow-400 text-yellow-300 bg-yellow-400/10" 
+                            : "border-white/30 text-white bg-white/10"
+                        }`}
+                        title={isBookmarked ? "Remove bookmark" : "Bookmark job"}
                       >
-                        {isBook ? "Saved" : "Save Job"}
+                        <BookmarkIcon className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} />
                       </button>
                       <button 
-                        onClick={()=>applyToJob(job)} 
-                        disabled={applying===id} 
-                        className="py-2.5 px-4 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition disabled:opacity-50"
+                        onClick={() => {}}
+                        className="px-4 py-2 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2"
                       >
-                        {applying===id ? (
-                          <div className="flex items-center gap-2">
-                            <MiniLoader size="xs" color="white" />
-                            <span>Applying…</span>
-                          </div>
-                        ) : "Apply"}
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </button>
+                      <button 
+                        onClick={() => handleApply(jobId)}
+                        disabled={isApplied}
+                        className={`px-4 py-2 font-semibold rounded-full border transition flex items-center justify-center ${
+                          isApplied
+                            ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
+                            : "bg-white/10 border-white/30 text-white hover:bg-green-500/20 hover:border-green-500/50"
+                        }`}
+                      >
+                        {isApplied ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1 flex-shrink-0" />
+                            <span>Applied</span>
+                          </>
+                        ) : (
+                          "Apply Now"
+                        )}
                       </button>
                     </div>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm text-gray-400">
-                    <span className="capitalize">{job.jobType || job.type}</span>
-                    {job.salary && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>₹{job.salary.toLocaleString()} per year</span>
-                      </>
-                    )}
-                    {job.expiresAt && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>Expires: {new Date(job.expiresAt).toLocaleDateString()}</span>
-                      </>
-                    )}
                   </div>
                 </div>
               );
