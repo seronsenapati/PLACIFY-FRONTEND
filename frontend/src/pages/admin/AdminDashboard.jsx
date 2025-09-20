@@ -1,42 +1,36 @@
 import { useEffect, useState } from "react";
-import { 
-  Users as UsersIcon, 
+import api from "../../services/api";
+import LoadingScreen from "../../components/LoadingScreen";
+import {
+  Users as UsersIcon,
   Briefcase as BriefcaseIcon,
-  AlertCircle as AlertCircleIcon,
+  FileText as FileTextIcon,
+  Calendar as CalendarIcon,
+  TrendingUp as TrendingUpIcon,
+  AlertTriangle as AlertTriangleIcon,
   CheckCircle as CheckCircleIcon,
-  Clock as ClockIcon,
-  Building as BuildingOfficeIcon,
-  FileText as DocumentTextIcon
+  XCircle as XCircleIcon,
+  Clock as ClockIcon
 } from "../../components/CustomIcons";
+import { getStatusStyles } from "../../utils/formatUtils";
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Example demo data (replace with API later)
-    setReports([
-      { 
-        id: 1, 
-        title: "Spam Job Post", 
-        status: "Pending Review",
-        reportedBy: "John Doe",
-        date: "2023-06-15"
-      },
-      { 
-        id: 2, 
-        title: "Abusive User", 
-        status: "Resolved",
-        reportedBy: "Jane Smith",
-        date: "2023-06-10"
-      },
-      { 
-        id: 3, 
-        title: "Fake Company Profile", 
-        status: "In Progress",
-        reportedBy: "Alex Johnson",
-        date: "2023-06-05"
-      },
-    ]);
+    const fetchReports = async () => {
+      try {
+        const response = await api.get("/reports");
+        setReports(response.data);
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReports();
   }, []);
 
   const stats = [
@@ -75,21 +69,6 @@ export default function AdminDashboard() {
       icon: <CheckCircleIcon className="w-5 h-5" />,
     },
   ];
-
-  const getStatusStyles = (status) => {
-    const baseStyles = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center";
-    
-    switch(status) {
-      case "Resolved":
-        return `${baseStyles} bg-green-500/10 text-green-400`;
-      case "In Progress":
-        return `${baseStyles} bg-blue-500/10 text-blue-400`;
-      case "Pending Review":
-        return `${baseStyles} bg-yellow-500/10 text-yellow-400`;
-      default:
-        return `${baseStyles} bg-gray-500/10 text-gray-400`;
-    }
-  };
 
   return (
     <div className="space-y-8">

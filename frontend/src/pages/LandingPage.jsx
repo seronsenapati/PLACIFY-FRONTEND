@@ -1,11 +1,22 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isLoggedIn, getRole } from "../utils/auth";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const loggedIn = isLoggedIn();
-  const role = getRole();
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+  const [role, setRole] = useState(getRole());
+
+  // Update auth state when localStorage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setLoggedIn(isLoggedIn());
+      setRole(getRole());
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const scrollToAbout = () => {
     document.getElementById("about-us")?.scrollIntoView({ behavior: "smooth" });
@@ -21,7 +32,7 @@ export default function Landing() {
       navigate("/recruiter/jobs");
       return;
     }
-    
+
     // For students and all other users, go to job listings
     navigate("/jobs");
   };
@@ -99,7 +110,7 @@ export default function Landing() {
       {/* About Us Section */}
       <section
         id="about-us"
-        className="relative py-20 px-6 bg-black"
+        className="relative py-20 px-6 bg-black -mt-1"
         aria-describedby="about-us-desc"
       >
         {/* Left Dotted Line */}
@@ -156,38 +167,41 @@ export default function Landing() {
               <p className="text-gray-400 text-sm">
                 Using AI-powered matching and personalized career support to
                 ensure the best fit for both students and employers.
+                hustle  - free job creation by AI for recruiter recruiters.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-6 mt-15">
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-6 mt-12">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 leading-snug">
             You deserve to get
             <br />
             the right Opportunities
           </h1>
 
-          <button
-            onClick={handleExploreJobs}
-            className="bg-white text-black px-6 py-2 rounded-full font-semibold text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
-            aria-label="Jobs and Explore Jobs"
-          >
-            {loggedIn && role === "recruiter" ? "Manage Jobs" : "Explore Jobs"}
-            <svg
-              className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => { handleExploreJobs(); scrollToTop() }}
+              className="bg-white text-black px-6 py-2 rounded-full font-semibold text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
+              aria-label="Jobs and Explore Jobs"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 8l4 4m0 0l-4 4m4-4H3"
-              />
-            </svg>
-          </button>
+              {loggedIn && role === "recruiter" ? "Manage Jobs" : "Explore Jobs"}
+              <svg
+                className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </section>
     </div>

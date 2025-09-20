@@ -1,7 +1,22 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
+import {
+  Briefcase as BriefcaseIcon,
+  Calendar as CalendarIcon,
+  Eye as EyeIcon,
+  Search as SearchIcon,
+  Filter as FilterIcon,
+  X as XIcon,
+  AlertTriangle as AlertTriangleIcon,
+  CheckCircle as CheckCircleIcon,
+  Clock as ClockIcon,
+  UserCheck as UserCheckIcon,
+  FileText as FileTextIcon,
+  Download as DownloadIcon
+} from "../../components/CustomIcons";
+import { formatDate } from "../../utils/formatUtils";
 
 export default function RecruiterApplications() {
   const [applications, setApplications] = useState([]);
@@ -23,7 +38,7 @@ export default function RecruiterApplications() {
     hasNextPage: false,
     hasPrevPage: false
   });
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJob, setSelectedJob] = useState('all');
   const [jobs, setJobs] = useState([]);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -44,44 +59,37 @@ export default function RecruiterApplications() {
   }, []);
 
   useEffect(() => {
-    if (selectedJob) {
+    if ((selectedJob || selectedJob === 'all') && jobs && jobs.length > 0) {
       loadApplications();
     }
-  }, [selectedJob, filters]);
+  }, [selectedJob, filters, jobs]);
 
   async function loadJobs() {
     try {
+      // Set loading to true when fetching jobs
+      setLoading(true);
+
       // Use the correct endpoint to get recruiter's jobs
       const res = await api.get("/jobs/recruiter/my-jobs");
       // Ensure jobs is always an array by accessing data.jobs
       const jobsData = Array.isArray(res.data.data.jobs) ? res.data.data.jobs : [];
       setJobs(jobsData);
-      // Select the first job by default if available
-      if (jobsData.length > 0) {
-        setSelectedJob(jobsData[0]._id);
-      }
+      // Select "all" applications by default and load them
+      setSelectedJob('all');
     } catch (err) {
       console.error('Error loading jobs:', err);
       setErrorMsg('Failed to load jobs');
       // Ensure jobs is always an array even on error
       setJobs([]);
-    } finally {
-      // Always set loading to false after attempting to load jobs
-      if (loading) {
-        setLoading(false);
-      }
     }
   }
 
   async function loadApplications() {
-    if (!selectedJob) return;
-    
-    // Only set loading to true when actively loading applications, not jobs
-    const wasLoading = loading;
-    if (!wasLoading) {
-      setLoading(true);
-    }
-    
+    if (!selectedJob && selectedJob !== 'all') return;
+
+    // Always set loading to true when loading applications
+    setLoading(true);
+
     try {
       const queryParams = new URLSearchParams();
       if (filters.page) queryParams.append('page', filters.page);
@@ -91,13 +99,86 @@ export default function RecruiterApplications() {
       if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
       if (filters.order) queryParams.append('order', filters.order);
 
-      // Use the correct endpoint for job applications
-      const res = await api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`);
-      const data = res.data.data;
-      setApplications(data.applications || []);
-      setPagination(data.pagination || {});
-      // Extract statistics from the statistics field in the response
-      setStats(data.statistics || {});
+      // Check if we're loading all applications
+      if (selectedJob === 'all') {
+        // Make sure we have jobs before trying to load applications
+        if (!Array.isArray(jobs) || jobs.length === 0) {
+          // If no jobs, set empty applications and return
+          setApplications([]);
+          setPagination({
+            currentPage: 1,
+            totalPages: 1,
+            totalCount: 0,
+            hasNextPage: false,
+            hasPrevPage: false
+          });
+          setStats({});
+          return;
+        }
+
+        let allApplications = [];
+        let allStats = {};
+        let allPagination = {};
+
+        // Fetch applications for all jobs
+        const jobApplications = await Promise.all(
+          jobs.map(job =>
+            api.get(`/applications/job/${job._id}?${queryParams.toString()}`)
+              .catch(err => {
+                console.error(`Error loading applications for job ${job._id}:`, err);
+                return { data: { data: { applications: [], statistics: {}, pagination: {} } } };
+              })
+          )
+        );
+
+        // Combine all applications
+        jobApplications.forEach(jobApp => {
+          if (jobApp.data.data.applications) {
+            allApplications = [...allApplications, ...jobApp.data.data.applications];
+          }
+
+          // Combine statistics
+          const jobStats = jobApp.data.data.statistics || {};
+          Object.keys(jobStats).forEach(key => {
+            if (allStats[key]) {
+              allStats[key] += jobStats[key];
+            } else {
+              allStats[key] = jobStats[key];
+            }
+          });
+        });
+
+        // Sort applications by createdAt date (newest first)
+        allApplications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Handle pagination for all applications
+        const totalCount = allApplications.length;
+        const totalPages = Math.ceil(totalCount / filters.limit);
+        const currentPage = filters.page;
+        const startIndex = (currentPage - 1) * filters.limit;
+        const endIndex = startIndex + filters.limit;
+        const paginatedApplications = allApplications.slice(startIndex, endIndex);
+
+        allPagination = {
+          currentPage,
+          totalPages,
+          totalCount,
+          hasNextPage: currentPage < totalPages,
+          hasPrevPage: currentPage > 1
+        };
+
+        setApplications(paginatedApplications);
+        setPagination(allPagination);
+        setStats(allStats);
+      } else {
+        // Use the correct endpoint for job applications
+        const res = await api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`);
+        const data = res.data.data;
+        setApplications(data.applications || []);
+        setPagination(data.pagination || {});
+        // Extract statistics from the statistics field in the response
+        setStats(data.statistics || {});
+      }
     } catch (err) {
       console.error('Error loading applications:', err);
       setErrorMsg('Failed to load applications');
@@ -118,8 +199,8 @@ export default function RecruiterApplications() {
         status,
         reason
       });
-      
-      setApplications(prev => prev.map(app => 
+
+      setApplications(prev => prev.map(app =>
         app._id === applicationId ? { ...app, status } : app
       ));
       setSuccessMsg(`Application ${status} successfully`);
@@ -166,23 +247,15 @@ export default function RecruiterApplications() {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  // Show loading screen only when initially loading (no jobs or applications loaded yet)
-  if (loading && Array.isArray(jobs) && jobs.length === 0 && applications.length === 0) {
+  // Show loading screen only when initially loading (no jobs loaded yet)
+  if (loading && (!Array.isArray(jobs) || jobs.length === 0)) {
     return (
-      <LoadingScreen 
+      <LoadingScreen
         title="Loading Applications"
         subtitle="Fetching job applications..."
         steps={[
-          { text: "Retrieving applications", color: "blue" },
-          { text: "Loading statistics", color: "purple" },
+          { text: "Retrieving jobs", color: "blue" },
+          { text: "Loading applications", color: "purple" },
           { text: "Preparing interface", color: "green" }
         ]}
       />
@@ -194,19 +267,29 @@ export default function RecruiterApplications() {
       <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Job Applications</h1>
-          <p className="text-gray-400">Review and manage applications for your job postings</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {selectedJob === 'all' ? 'All Job Applications' : 'Job Applications'}
+          </h1>
+          <p className="text-gray-400">
+            {selectedJob === 'all'
+              ? 'Review and manage applications for all your job postings'
+              : 'Review and manage applications for your job postings'}
+          </p>
         </div>
 
         {/* Job Selector */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-400 mb-2">Select Job Posting</label>
           <select
-            value={selectedJob || ""}
-            onChange={(e) => setSelectedJob(e.target.value)}
+            value={selectedJob}
+            onChange={(e) => {
+              setSelectedJob(e.target.value);
+              // Set loading to true immediately when changing selection
+              setLoading(true);
+            }}
             className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
-            <option value="">Select a job posting</option>
+            <option value="all">All Applications</option>
             {Array.isArray(jobs) && jobs.map(job => (
               <option key={job._id} value={job._id}>
                 {job.title} at {job.company?.name || "Company not specified"}
@@ -215,7 +298,7 @@ export default function RecruiterApplications() {
           </select>
         </div>
 
-        {!selectedJob ? (
+        {(!selectedJob && selectedJob !== 'all') ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,7 +331,7 @@ export default function RecruiterApplications() {
             {errorMsg && (
               <div className="mb-6 p-4 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 flex items-center gap-3">
                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="flex-1">{errorMsg}</span>
                 <button onClick={() => setErrorMsg("")} className="flex-shrink-0 hover:opacity-70 transition-opacity">
@@ -261,7 +344,7 @@ export default function RecruiterApplications() {
 
             {/* Statistics Cards */}
             {Object.keys(stats).length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <div className="bg-white/5 rounded-lg border border-white/10 p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -344,38 +427,39 @@ export default function RecruiterApplications() {
                     className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3 sm:col-span-3">
+                  {/* Status Filter */}
+                  <div>
+                    <select
+                      value={filters.status}
+                      onChange={(e) => handleFilterChange('status', e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="withdrawn">Withdrawn (Student-initiated)</option>
+                    </select>
+                  </div>
 
-                {/* Status Filter */}
-                <div>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="reviewed">Reviewed</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="withdrawn">Withdrawn (Student-initiated)</option>
-                  </select>
-                </div>
-
-                {/* Sort */}
-                <div>
-                  <select
-                    value={`${filters.sortBy}-${filters.order}`}
-                    onChange={(e) => {
-                      const [sortBy, order] = e.target.value.split('-');
-                      handleFilterChange('sortBy', sortBy);
-                      handleFilterChange('order', order);
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="createdAt-desc">Newest First</option>
-                    <option value="createdAt-asc">Oldest First</option>
-                    <option value="status-asc">Status (A-Z)</option>
-                    <option value="status-desc">Status (Z-A)</option>
-                  </select>
+                  {/* Sort */}
+                  <div>
+                    <select
+                      value={`${filters.sortBy}-${filters.order}`}
+                      onChange={(e) => {
+                        const [sortBy, order] = e.target.value.split('-');
+                        handleFilterChange('sortBy', sortBy);
+                        handleFilterChange('order', order);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="createdAt-desc">Newest First</option>
+                      <option value="createdAt-asc">Oldest First</option>
+                      <option value="status-asc">Status (A-Z)</option>
+                      <option value="status-desc">Status (Z-A)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -395,20 +479,20 @@ export default function RecruiterApplications() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  
+
                   {/* Static Text */}
                   <div className="space-y-3">
                     <h3 className="text-xl font-medium text-white mb-2">
                       No applications found
                     </h3>
-                    
+
                     <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-                      {filters.search || filters.status 
+                      {filters.search || filters.status
                         ? "No applications match your current filters. Try adjusting your search criteria."
                         : "No applications have been submitted for this job yet."
                       }
                     </p>
-                    
+
                     {/* Clear Filters Button */}
                     {(filters.search || filters.status) && (
                       <div className="mt-4">
@@ -435,8 +519,8 @@ export default function RecruiterApplications() {
               ) : (
                 Array.isArray(applications) && applications.map(application => {
                   return (
-                    <div 
-                      key={application._id} 
+                    <div
+                      key={application._id}
                       className="p-5 rounded-xl border bg-white/5 border-white/10 transition-all duration-300"
                     >
                       <div className="flex flex-col md:flex-row md:items-start gap-4">
@@ -451,12 +535,12 @@ export default function RecruiterApplications() {
                                 {application.student?.email || "Email not provided"}
                               </p>
                             </div>
-                            
+
                             <span className={getStatusBadgeClass(application.status)}>
                               {formatStatus(application.status)}
                             </span>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
                             <div className="flex items-center gap-2 text-gray-400">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -464,7 +548,7 @@ export default function RecruiterApplications() {
                               </svg>
                               <span>Applied: {formatDate(application.createdAt)}</span>
                             </div>
-                            
+
                             <div className="flex items-center gap-2 text-gray-400">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -472,7 +556,7 @@ export default function RecruiterApplications() {
                               <span>{application.daysSinceApplication || 0} days ago</span>
                             </div>
                           </div>
-                          
+
                           {application.coverLetter && (
                             <div className="mb-4">
                               <h4 className="text-sm font-medium text-gray-400 mb-1">Cover Letter</h4>
@@ -481,11 +565,11 @@ export default function RecruiterApplications() {
                               </p>
                             </div>
                           )}
-                          
+
                           <div className="flex flex-wrap gap-2">
                             {application.student?.profile?.skills?.slice(0, 5).map((skill, index) => (
-                              <span 
-                                key={index} 
+                              <span
+                                key={index}
                                 className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
                               >
                                 {skill}
@@ -498,7 +582,7 @@ export default function RecruiterApplications() {
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Action Buttons */}
                         <div className="flex flex-col gap-2 md:items-end">
                           {application.status === 'pending' && (
@@ -523,7 +607,7 @@ export default function RecruiterApplications() {
                                   </div>
                                 )}
                               </button>
-                              
+
                               <button
                                 onClick={() => updateApplicationStatus(application._id, 'rejected')}
                                 disabled={actionLoading[application._id]}
@@ -545,19 +629,19 @@ export default function RecruiterApplications() {
                               </button>
                             </>
                           )}
-                          
+
                           <div className="flex gap-2">
                             {application.resumeUrl && (
-                              <a 
-                                href={application.resumeUrl} 
-                                target="_blank" 
+                              <a
+                                href={application.resumeUrl}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition"
                               >
                                 View Resume
                               </a>
                             )}
-                            
+
                             <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">
                               View Details
                             </button>
@@ -576,7 +660,7 @@ export default function RecruiterApplications() {
                 <div className="text-sm text-gray-400">
                   Showing {((pagination.currentPage - 1) * filters.limit) + 1} to {Math.min(pagination.currentPage * filters.limit, pagination.totalCount)} of {pagination.totalCount} applications
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
@@ -585,11 +669,11 @@ export default function RecruiterApplications() {
                   >
                     Previous
                   </button>
-                  
+
                   <span className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">
                     {pagination.currentPage}
                   </span>
-                  
+
                   <button
                     onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
                     disabled={!pagination.hasNextPage}

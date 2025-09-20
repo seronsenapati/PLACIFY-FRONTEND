@@ -348,11 +348,11 @@ export default function RecruiterDashboard() {
   // Show error messages if any
   if (errorMsg) {
     return (
-      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
+      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start w-full p-4">
         <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
             <p className="text-gray-400">Overview of your job postings and applications</p>
           </div>
 
@@ -370,26 +370,26 @@ export default function RecruiterDashboard() {
           </div>
 
           {/* Fallback Options */}
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-6 text-center">
-            <p className="text-yellow-400">
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
+            <p className="text-yellow-400 text-sm sm:text-base">
               While we're experiencing issues with the main dashboard, you can still access your job management features:
             </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-2 sm:gap-3">
               <a
                 href="/recruiter/manage-jobs"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base rounded-lg transition-colors"
               >
                 Manage Jobs
               </a>
               <a
                 href="/recruiter/company-profile"
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg transition-colors"
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm sm:text-base rounded-lg transition-colors"
               >
                 Company Profile
               </a>
               <a
                 href="/recruiter/applications"
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg transition-colors"
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm sm:text-base rounded-lg transition-colors"
               >
                 Applications
               </a>
@@ -402,15 +402,15 @@ export default function RecruiterDashboard() {
 
   if (!dataToDisplay) {
     return (
-      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
+      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start w-full p-4">
         <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
             <p className="text-gray-400">Overview of your job postings and applications</p>
           </div>
 
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-6 text-center">
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
             <p className="text-yellow-400">No dashboard data available</p>
             <button
               onClick={handleRetry}
@@ -475,11 +475,11 @@ export default function RecruiterDashboard() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
+    <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start w-full">
       <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Recruiter Dashboard</h1>
           <p className="text-gray-400">Overview of your job postings and applications</p>
         </div>
 
@@ -514,38 +514,38 @@ export default function RecruiterDashboard() {
         )}
 
         {/* Summary Cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 sm:mb-6">
           {stats.map((stat, index) => (
             <div
               key={stat.label}
               className="bg-white/5 rounded-lg border border-white/10 p-4"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   {stat.icon}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">{stat.label}</p>
-                  <p className="text-xl font-semibold text-white">{stat.value}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">{stat.label}</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">{stat.value}</p>
                 </div>
               </div>
             </div>
           ))}
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Company Info */}
           {safeDashboardData.company && (
             <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden">
-              <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-                <h2 className="text-xl font-semibold">Company Profile</h2>
-                <p className="text-sm text-gray-400 mt-1">Your company information</p>
+              <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+                <h2 className="text-lg sm:text-xl font-semibold">Company Profile</h2>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">Your company information</p>
               </div>
 
-              <div className="p-6">
-                <div className="flex items-center">
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start">
                   {/* Company Logo Display - Increased size */}
-                  <div className="w-32 h-32 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30 mb-4 sm:mb-0 sm:mr-4">
                     {safeDashboardData.company?.logo ? (
                       <img
                         src={safeDashboardData.company.logo}
@@ -554,7 +554,7 @@ export default function RecruiterDashboard() {
                       />
                     ) : (
                       <svg
-                        className="w-16 h-16 text-gray-400"
+                        className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -568,26 +568,26 @@ export default function RecruiterDashboard() {
                       </svg>
                     )}
                   </div>
-                  <div className="ml-4">
+                  <div className="text-center sm:text-left">
                     {/* Increased company name size */}
-                    <h3 className="text-2xl font-bold">{safeDashboardData.company.name || "Company Name"}</h3>
+                    <h3 className="text-xl sm:text-2xl font-bold">{safeDashboardData.company.name || "Company Name"}</h3>
                     {/* Increased profile completion text size */}
-                    <p className="text-lg text-gray-400">
+                    <p className="text-base sm:text-lg text-gray-400 mt-1">
                       Profile Completeness: {safeDashboardData.company.profileCompleteness !== undefined ? `${safeDashboardData.company.profileCompleteness}%` : "N/A"}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={() => window.location.href = "/recruiter/company"}
-                    className="px-4 py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
+                    className="px-3 py-2 sm:px-4 sm:py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition text-sm sm:text-base"
                   >
                     View Profile
                   </button>
                   <button
                     onClick={() => window.location.href = "/recruiter/jobs"}
-                    className="px-4 py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition"
+                    className="px-3 py-2 sm:px-4 sm:py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-sm sm:text-base"
                   >
                     Manage Jobs
                   </button>
@@ -599,18 +599,18 @@ export default function RecruiterDashboard() {
 
           {/* Recent Jobs */}
           <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-              <h2 className="text-xl font-semibold">Recent Jobs</h2>
-              <p className="text-sm text-gray-400 mt-1">Your latest job postings</p>
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+              <h2 className="text-lg sm:text-xl font-semibold">Recent Jobs</h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">Your latest job postings</p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Job Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Applications</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Job Title</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Applications</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -622,13 +622,13 @@ export default function RecruiterDashboard() {
                           key={job._id || job.id || index}
                           className={`transition-colors duration-200 ${index % 2 === 0 ? 'bg-white/2.5' : 'bg-white/5'}`}
                         >
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium">{job.title || "Untitled Job"}</div>
-                              <div className="text-sm text-gray-400">{job.role || "Role not specified"}</div>
+                              <div className="text-xs sm:text-sm text-gray-400">{job.role || "Role not specified"}</div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'active'
                                 ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                                 : job.status === 'expired'
@@ -638,7 +638,7 @@ export default function RecruiterDashboard() {
                               {job.status || "Unknown"}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
                             {job.applicationCount !== undefined ? job.applicationCount :
                               job.applications ? job.applications.length : "N/A"} applications
                           </td>
@@ -647,7 +647,7 @@ export default function RecruiterDashboard() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="3" className="px-6 py-12 text-center">
+                      <td colSpan="3" className="px-4 sm:px-6 py-8 sm:py-12 text-center">
                         <div className="text-gray-400">No jobs found</div>
                         <button
                           onClick={() => window.location.href = "/recruiter/jobs"}
@@ -662,7 +662,7 @@ export default function RecruiterDashboard() {
               </table>
             </div>
 
-            <div className="px-6 py-3 border-t border-white/10 text-right">
+            <div className="px-4 sm:px-4 sm:px-6 py-3 border-t border-white/10 text-right">
               <button
                 onClick={() => window.location.href = "/recruiter/jobs"}
                 className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
@@ -675,25 +675,25 @@ export default function RecruiterDashboard() {
 
         {/* Notifications - only show if notifications data exists */}
         {notifications && (
-          <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden mt-6">
-            <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-              <h2 className="text-xl font-semibold">Notifications</h2>
-              <p className="text-sm text-gray-400 mt-1">Recent system notifications</p>
+          <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden mt-4 sm:mt-6">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+              <h2 className="text-lg sm:text-xl font-semibold">Notifications</h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">Recent system notifications</p>
             </div>
 
-            <div className="p-6">
-              <div className="flex items-center justify-between">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <p className="text-white">
+                  <p className="text-white text-sm sm:text-base">
                     You have {notifications.unread !== undefined ? notifications.unread : "N/A"} unread notifications
                   </p>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-400 text-xs sm:text-sm">
                     Total: {notifications.total !== undefined ? notifications.total : "N/A"} notifications
                   </p>
                 </div>
                 <button
                   onClick={() => window.location.href = "/recruiter/notifications"}
-                  className="px-4 py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
+                  className="px-3 py-2 sm:px-4 sm:py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition text-sm sm:text-base"
                 >
                   View All
                 </button>
@@ -704,13 +704,13 @@ export default function RecruiterDashboard() {
 
         {/* Fallback notice if we're using fallback data */}
         {fallbackStats && !dashboardData && (
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 text-center mt-6">
-            <p className="text-yellow-400">
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 text-center mt-4 sm:mt-6">
+            <p className="text-yellow-400 text-sm sm:text-base">
               Showing limited dashboard data. Some features may not be available until the main dashboard service is restored.
             </p>
             <button
               onClick={handleRetry}
-              className="mt-2 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm transition-colors"
+              className="mt-2 px-3 py-1 sm:px-3 sm:py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm transition-colors"
             >
               Try to Load Full Dashboard
             </button>

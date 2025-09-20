@@ -266,9 +266,9 @@ export default function StudentSettings() {
     <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
       <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-3xl font-bold text-white mb-2">Account Settings</h1>
-          <p className="text-gray-400">Manage your account preferences and security</p>
+        <div className="mb-4 sm:mb-5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Account Settings</h1>
+          <p className="text-gray-400 text-sm sm:text-base">Manage your account preferences and security</p>
         </div>
 
         {/* Success Message */}
@@ -306,77 +306,82 @@ export default function StudentSettings() {
             </button>
           </div>
         )}
-        {/* Enhanced Tabs */}
-        <div className="flex gap-2 mb-4 p-1 bg-white/5 rounded-lg border border-white/10 w-fit">
+        {/* Enhanced Tabs - Made responsive for mobile */}
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-white/5 rounded-lg border border-white/10 w-full">
           <button
             onClick={() => setActiveTab("general")}
-            className={`py-3 px-6 font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+            className={`py-2 px-3 sm:py-3 sm:px-4 font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 sm:gap-2 flex-1 min-w-[80px] sm:min-w-[120px] justify-center text-xs sm:text-sm ${
               activeTab === "general"
                 ? "bg-white/20 border border-white/30 text-white shadow-lg"
                 : "bg-transparent border border-transparent text-gray-400 hover:text-white hover:bg-white/10"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            General
+            <span className="hidden xs:inline">General</span>
+            <span className="xs:hidden">Gen</span>
           </button>
           <button
             onClick={() => setActiveTab("password")}
-            className={`py-3 px-6 font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+            className={`py-2 px-3 sm:py-3 sm:px-4 font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 sm:gap-2 flex-1 min-w-[80px] sm:min-w-[120px] justify-center text-xs sm:text-sm ${
               activeTab === "password"
                 ? "bg-white/20 border border-white/30 text-white shadow-lg"
                 : "bg-transparent border border-transparent text-gray-400 hover:text-white hover:bg-white/10"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Password
+            <span className="hidden xs:inline">Password</span>
+            <span className="xs:hidden">Pass</span>
           </button>
           <button
             onClick={() => setActiveTab("notifications")}
-            className={`py-3 px-6 font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+            className={`py-2 px-3 sm:py-3 sm:px-4 font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 sm:gap-2 flex-1 min-w-[80px] sm:min-w-[120px] justify-center text-xs sm:text-sm ${
               activeTab === "notifications"
                 ? "bg-white/20 border border-white/30 text-white shadow-lg"
                 : "bg-transparent border border-transparent text-gray-400 hover:text-white hover:bg-white/10"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.07c.893.204 1.962.32 3.17.32h7.244c1.208 0 2.277-.116 3.17-.32a.75.75 0 00.515-1.07C16.454 11.665 16 9.887 16 8a6 6 0 00-6-6zM8 19a2 2 0 104 0v1a2 2 0 11-4 0v-1z" />
             </svg>
-            Notifications
+            <span className="hidden xs:inline">Notifications</span>
+            <span className="xs:hidden">Notify</span>
           </button>
         </div>
 
         {/* Enhanced General Tab */}
         {activeTab === "general" && (
-          <div className="bg-white/5 rounded-xl border border-white/10 p-5">
-            <form onSubmit={saveGeneral} className="space-y-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold text-white mb-2">Profile Information</h2>
-                  <p className="text-gray-400">Update your account details and preferences</p>
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 sm:p-5">
+            <form onSubmit={saveGeneral} className="space-y-6 sm:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
+                <div className="flex-1">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1 sm:mb-2">Profile Information</h2>
+                  <p className="text-gray-400 text-sm sm:text-base">Update your account details and preferences</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-300 font-medium">Account Status</div>
-                  <div className="text-green-400 text-sm flex items-center gap-1 mt-1">
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                    Active
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="bg-white/5 rounded-lg border border-white/10 px-3 py-2 sm:px-4 sm:py-3">
+                    <div className="text-xs sm:text-sm text-gray-300 font-medium text-center">Account Status</div>
+                    <div className="text-green-400 text-xs sm:text-sm flex items-center gap-1 mt-1 justify-center">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span>Active</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Enhanced Profile Photo Section */}
-              <div className="bg-white/5 rounded-lg border border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-white/5 rounded-lg border border-white/10 p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   Profile Photo
                 </h3>
-                <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border-4 border-white/20 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border-4 border-white/20 shadow-lg">
                     {form.profilePhotoUrl ? (
                       <img
                         src={form.profilePhotoUrl}
@@ -384,12 +389,12 @@ export default function StudentSettings() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 w-full">
                     <input
                       type="file"
                       accept="image/*"
@@ -403,23 +408,23 @@ export default function StudentSettings() {
                             : form.profilePhotoUrl,
                         });
                       }}
-                      className="block w-full text-sm text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:bg-white/10 file:text-white hover:file:bg-white/20 file:font-semibold transition-all file:cursor-pointer"
+                      className="block w-full text-xs sm:text-sm text-gray-400 file:mr-2 sm:file:mr-4 file:py-2 sm:file:py-3 file:px-3 sm:file:px-6 file:rounded-full file:border-0 file:bg-white/10 file:text-white hover:file:bg-white/20 file:font-semibold transition-all file:cursor-pointer"
                     />
-                    <p className="text-xs text-gray-400 mt-2">Upload a professional photo. JPG, PNG or GIF (max 5MB)</p>
+                    <p className="text-xs text-gray-400 mt-1 sm:mt-2">Upload a professional photo. JPG, PNG or GIF (max 5MB)</p>
                   </div>
                 </div>
               </div>
 
               {/* Enhanced Form Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">Full Name *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Full Name *</label>
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Enter your full name"
                     required
                   />
@@ -427,25 +432,25 @@ export default function StudentSettings() {
 
                 {/* Username */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">Username *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Username *</label>
                   <input
                     type="text"
                     value={form.username}
                     onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Choose a unique username"
                     required
                   />
                 </div>
 
                 {/* Email */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-3">Email Address *</label>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Email Address *</label>
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Enter your email address"
                     required
                   />
@@ -457,19 +462,19 @@ export default function StudentSettings() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-8 py-3 font-semibold rounded-full bg-gradient-to-r from-blue-600 to-purple-600 border-0 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 font-semibold rounded-full bg-gradient-to-r from-blue-600 to-purple-600 border-0 text-white text-sm sm:text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
                   {saving ? (
-                    <div className="flex items-center gap-3">
-                      <MiniLoader size="sm" color="white" />
-                      <span>Saving Changes...</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <MiniLoader size="xs" color="white" />
+                      <span className="text-sm sm:text-base">Saving Changes...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Save Changes
+                      <span className="text-sm sm:text-base">Save Changes</span>
                     </div>
                   )}
                 </button>
@@ -642,7 +647,7 @@ export default function StudentSettings() {
                   </label>
                 </div>
                 {notificationPreferences.email.enabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-8">
                     {Object.entries(notificationPreferences.email.types).map(([type, enabled]) => (
                       <label key={type} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                         <span className="text-sm text-gray-300 capitalize">
@@ -680,7 +685,7 @@ export default function StudentSettings() {
                   </label>
                 </div>
                 {notificationPreferences.push.enabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-8">
                     {Object.entries(notificationPreferences.push.types).map(([type, enabled]) => (
                       <label key={type} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                         <span className="text-sm text-gray-300 capitalize">
@@ -718,7 +723,7 @@ export default function StudentSettings() {
                   </label>
                 </div>
                 {notificationPreferences.inApp.enabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-8">
                     {Object.entries(notificationPreferences.inApp.types).map(([type, enabled]) => (
                       <label key={type} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                         <span className="text-sm text-gray-300 capitalize">
@@ -759,7 +764,7 @@ export default function StudentSettings() {
                   </label>
                 </div>
                 {notificationPreferences.quietHours.enabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-8">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Start Time</label>
                       <input
@@ -778,7 +783,7 @@ export default function StudentSettings() {
                         className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
                       />
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-300 mb-2">Timezone</label>
                       <select
                         value={notificationPreferences.quietHours.timezone}

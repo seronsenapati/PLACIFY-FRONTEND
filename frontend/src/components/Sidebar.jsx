@@ -17,6 +17,8 @@ import {
   Bell as BellIcon,
   ChevronLeft as ChevronLeftIcon,
   ClipboardList as ClipboardListIcon,
+  X as XIcon,
+  LayoutDashboard as LayoutDashboardIcon,
 } from "./CustomIcons";
 
 const getIcon = (name, collapsed = false) => {
@@ -26,7 +28,7 @@ const getIcon = (name, collapsed = false) => {
 
   switch (name.toLowerCase()) {
     case "dashboard":
-      return <HomeIcon className={iconClass} />;
+      return <LayoutDashboardIcon className={iconClass} />;
     case "search jobs":
       return <SearchIcon className={iconClass} />;
     case "my applications":
@@ -51,37 +53,62 @@ const getIcon = (name, collapsed = false) => {
       return <BookmarkIcon className={iconClass} />;
     case "applications":
       return <ClipboardListIcon className={iconClass} />;
+    case "home":
+      return <HomeIcon className={iconClass} />;
+    case "logout":
+      return <LogOutIcon className={iconClass} />;
     default:
       return <span className="w-5 h-5"></span>;
   }
 };
 
-export default function Sidebar({ links = [], collapsed = false, onToggle, role, username }) {
+export default function Sidebar({ links = [], collapsed = false, onToggle, onHome, onLogout, isMobile = false }) {
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState(null);
+
+  // Add Home and Logout links only for mobile view
+  const allLinks = isMobile 
+    ? [
+        ...links,
+        { name: "Home", path: "#home", action: onHome, badge: null },
+        { name: "Logout", path: "#logout", action: onLogout, badge: null }
+      ]
+    : links;
 
   return (
     <aside className="w-full h-full text-white relative flex flex-col">
       <div className="p-2 h-full flex flex-col">
         {/* Header Section */}
         <div className="flex-1">
-          {/* Logo */}
-          <div className={`${collapsed ? 'p-2 pt-5 mb-2 text-center' : 'p-2 pt-4 mb-2 text-center'} transition-all duration-300`}>
-            <Link
-              to="/"
-              className={`font-bold tracking-wide placify-font-style transition-all duration-300 ${
-                collapsed 
-                  ? 'text-5xl border-3 border-white rounded-full w-13 h-13 flex items-center justify-center mx-auto -mt-2' 
-                  : 'text-5xl'
-              }`}
-            >
-              {collapsed ? 'P' : 'Placify'}
-            </Link>
+          {/* Logo and Close Button in same row for mobile */}
+          <div className={`${collapsed ? 'p-2 pt-5 mb-2' : 'p-2 pt-4 mb-2'} transition-all duration-300`}>
+            <div className="flex items-center justify-between">
+              <Link
+                to="/"
+                className={`font-bold tracking-wide placify-font-style transition-all duration-300 ${
+                  collapsed 
+                    ? 'text-4xl border-3 border-white rounded-full w-12 h-12 flex items-center justify-center -mt-2' 
+                    : 'text-5xl ml-10'
+                }`}
+              >
+                {collapsed ? 'P' : 'Placify'}
+              </Link>
+              
+              {/* Close button for mobile sidebar - in same row as logo */}
+              {onToggle && isMobile && (
+                <button 
+                  onClick={onToggle}
+                  className="p-2 ml-7 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white lg:hidden transition-all duration-200"
+                >
+                  <XIcon className="w-5 h-5 " />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Navigation Links */}
           <nav className="space-y-2">
-            {links.map((link, index) => {
+            {(collapsed ? links : allLinks).map((link, index) => {
               const active =
                 location.pathname === link.path ||
                 (link.matchPrefix &&
@@ -89,57 +116,85 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
 
               return (
                 <div key={link.path} className="relative">
-                  <NavLink
-                    to={link.path}
-                    onMouseEnter={() => setHoveredItem(index)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    className={`relative flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'px-4 py-3'} rounded-lg transition-all duration-200 group overflow-hidden
-                    ${
-                      active
-                        ? "bg-gradient-to-r from-white/15 to-white/2 text-white shadow-lg"
-                        : "text-gray-300 hover:bg-gradient-to-r hover:from-white/8 hover:to-white/1 hover:text-white"
-                    }`}
-                  >
-                    {/* Icon and content */}
-                    <div className={`relative flex items-center ${collapsed ? 'justify-center w-full' : 'w-full'}`}>
-                      <div className={`flex-shrink-0 ${collapsed ? '' : 'mr-3'}`}>
-                        {getIcon(link.name, collapsed)}
+                  {link.action ? (
+                    // For action buttons (Home, Logout)
+                    <button
+                      onClick={link.action}
+                      className={`relative flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'px-4 py-3'} rounded-lg transition-all duration-200 group overflow-hidden w-full text-left
+                      ${
+                        link.name === "Logout"
+                          ? "text-red-300 hover:bg-red-500/20 hover:border-red-500/50"
+                          : "text-gray-300 hover:bg-gradient-to-r hover:from-white/8 hover:to-white/1 hover:text-white"
+                      }`}
+                    >
+                      <div className={`relative flex items-center ${collapsed ? 'justify-center w-full' : 'w-full'}`}>
+                        <div className={`flex-shrink-0 ${collapsed ? '' : 'mr-3'}`}>
+                          {getIcon(link.name, collapsed)}
+                        </div>
+                        
+                        {!collapsed && (
+                          <>
+                            <span className="text-sm font-medium flex-1 truncate">
+                              {link.name}
+                            </span>
+                          </>
+                        )}
                       </div>
-                      
-                      {!collapsed && (
-                        <>
-                          <span className="text-sm font-medium flex-1 truncate">
-                            {link.name}
-                          </span>
-                          
-                          {/* Notification Badge */}
-                          <div className="ml-2 flex-shrink-0 flex items-center">
-                            {link.badge && (
-                              <div className="flex items-center">
-                                {link.badge === 'New' ? (
-                                  <div className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full">
-                                    {link.badge}
-                                  </div>
-                                ) : (
-                                  <div className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                                    {parseInt(link.badge) > 99 ? '99+' : link.badge}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {/* Red dot for unread notifications */}
-                            {link.name === 'Notifications' && link.badge && parseInt(link.badge) > 0 && (
-                              <div className="w-2 h-2 bg-red-500 rounded-full ml-1 animate-pulse"></div>
-                            )}
-                          </div>
+                    </button>
+                  ) : (
+                    // For navigation links
+                    <NavLink
+                      to={link.path}
+                      onMouseEnter={() => setHoveredItem(index)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className={`relative flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'px-4 py-3'} rounded-lg transition-all duration-200 group overflow-hidden
+                      ${
+                        active
+                          ? "bg-gradient-to-r from-white/15 to-white/2 text-white shadow-lg"
+                          : "text-gray-300 hover:bg-gradient-to-r hover:from-white/8 hover:to-white/1 hover:text-white"
+                      }`}
+                    >
+                      {/* Icon and content */}
+                      <div className={`relative flex items-center ${collapsed ? 'justify-center w-full' : 'w-full'}`}>
+                        <div className={`flex-shrink-0 ${collapsed ? '' : 'mr-3'}`}>
+                          {getIcon(link.name, collapsed)}
+                        </div>
+                        
+                        {!collapsed && (
+                          <>
+                            <span className="text-sm font-medium flex-1 truncate">
+                              {link.name}
+                            </span>
+                            
+                            {/* Notification Badge */}
+                            <div className="ml-2 flex-shrink-0 flex items-center">
+                              {link.badge && (
+                                <div className="flex items-center">
+                                  {link.badge === 'New' ? (
+                                    <div className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full">
+                                      {link.badge}
+                                    </div>
+                                  ) : (
+                                    <div className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                      {parseInt(link.badge) > 99 ? '99+' : link.badge}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {/* Red dot for unread notifications */}
+                              {link.name === 'Notifications' && link.badge && parseInt(link.badge) > 0 && (
+                                <div className="w-2 h-2 bg-red-500 rounded-full ml-1 animate-pulse"></div>
+                              )}
+                            </div>
 
-                        </>
-                      )}
-                    </div>
-                  </NavLink>
+                          </>
+                        )}
+                      </div>
+                    </NavLink>
+                  )}
                   
                   {/* Tooltip for collapsed mode */}
-                  {collapsed && hoveredItem === index && (
+                  {collapsed && hoveredItem === index && !link.action && (
                     <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50">
                       <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl border border-white/20 whitespace-nowrap text-sm">
                         {link.name}
@@ -167,7 +222,7 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
 
         {/* Collapse Toggle Button */}
         {onToggle && (
-          <div className="px-2 pb-2">
+          <div className="px-2 pb-2 hidden lg:block">
             <button
               onClick={onToggle}
               className="w-full flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 group"
@@ -185,7 +240,7 @@ export default function Sidebar({ links = [], collapsed = false, onToggle, role,
           </div>
         )}
 
-        {/* Copyright Footer */}
+        {/* Copyright Footer - now visible on both mobile and desktop */}
         <div className="mt-auto pt-4 text-center text-xs text-gray-400 border-t border-white/5">
           {new Date().getFullYear()} Placify. All rights reserved.
         </div>

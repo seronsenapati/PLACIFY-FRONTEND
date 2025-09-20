@@ -111,7 +111,7 @@ export default function RecruiterNotifications() {
     setActionLoading(prev => ({ ...prev, [notificationId]: true }));
     try {
       await api.patch(`/notifications/${notificationId}/mark-read`);
-      setNotifications(prev => prev.map(n => 
+      setNotifications(prev => prev.map(n =>
         n._id === notificationId ? { ...n, read: true } : n
       ));
       loadStats();
@@ -210,7 +210,7 @@ export default function RecruiterNotifications() {
       case 'account_update':
         return 'Account Update';
       default:
-        return type.split('_').map(word => 
+        return type.split('_').map(word =>
           word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
         ).join(' ');
     }
@@ -223,14 +223,14 @@ export default function RecruiterNotifications() {
 
     const jobId = notification.metadata?.jobId;
     const daysLeft = notification.metadata?.daysLeft;
-    
+
     return (
       <div className="mt-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-blue-300 font-medium">
-              {notification.type === 'job_expiring' 
-                ? `This job expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}` 
+              {notification.type === 'job_expiring'
+                ? `This job expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
                 : 'This job has expired'}
             </p>
           </div>
@@ -252,7 +252,7 @@ export default function RecruiterNotifications() {
 
   if (loading && notifications.length === 0) {
     return (
-      <LoadingScreen 
+      <LoadingScreen
         title="Loading Notifications"
         subtitle="Fetching your latest updates..."
         steps={[
@@ -305,7 +305,7 @@ export default function RecruiterNotifications() {
 
         {/* Statistics Cards */}
         {stats && Object.keys(stats).length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 sm:mb-6">
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -367,7 +367,59 @@ export default function RecruiterNotifications() {
 
         {/* Filters and Search */}
         <div className="bg-white/5 rounded-lg border border-white/10 p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Mobile View - All filters in a single responsive row */}
+          <div className="flex flex-col sm:hidden gap-4">
+            <input
+              type="text"
+              placeholder="Search notifications..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              <select
+                value={filters.unread || ''}
+                onChange={(e) => handleFilterChange('unread', e.target.value === '' ? null : e.target.value === 'true')}
+                className="flex-shrink-0 px-2 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                style={{ width: '100px' }}
+              >
+                <option value="">All Status</option>
+                <option value="true">Unread</option>
+                <option value="false">Read</option>
+              </select>
+
+              <select
+                value={filters.type}
+                onChange={(e) => handleFilterChange('type', e.target.value)}
+                className="flex-shrink-0 px-2 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                style={{ width: '100px' }}
+              >
+                <option value="">All Types</option>
+                {notificationTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filters.priority}
+                onChange={(e) => handleFilterChange('priority', e.target.value)}
+                className="flex-shrink-0 px-2 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                style={{ width: '100px' }}
+              >
+                <option value="">All Priority</option>
+                {priorities.map(priority => (
+                  <option key={priority.value} value={priority.value}>
+                    {priority.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Desktop View - Grid layout */}
+          <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search */}
             <div className="lg:col-span-2">
               <input
@@ -379,49 +431,51 @@ export default function RecruiterNotifications() {
               />
             </div>
 
-            {/* Read Status Filter */}
-            <div>
-              <select
-                value={filters.unread || ''}
-                onChange={(e) => handleFilterChange('unread', e.target.value === '' ? null : e.target.value === 'true')}
-                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Notifications</option>
-                <option value="true">Unread Only</option>
-                <option value="false">Read Only</option>
-              </select>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4 lg:col-span-3">
+              {/* Read Status Filter */}
+              <div>
+                <select
+                  value={filters.unread || ''}
+                  onChange={(e) => handleFilterChange('unread', e.target.value === '' ? null : e.target.value === 'true')}
+                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">All Notifications</option>
+                  <option value="true">Unread Only</option>
+                  <option value="false">Read Only</option>
+                </select>
+              </div>
 
-            {/* Type Filter */}
-            <div>
-              <select
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Types</option>
-                {notificationTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Type Filter */}
+              <div>
+                <select
+                  value={filters.type}
+                  onChange={(e) => handleFilterChange('type', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">All Types</option>
+                  {notificationTypes.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Priority Filter */}
-            <div>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange('priority', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Priorities</option>
-                {priorities.map(priority => (
-                  <option key={priority.value} value={priority.value}>
-                    {priority.label}
-                  </option>
-                ))}
-              </select>
+              {/* Priority Filter */}
+              <div>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => handleFilterChange('priority', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">All Priorities</option>
+                  {priorities.map(priority => (
+                    <option key={priority.value} value={priority.value}>
+                      {priority.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -450,7 +504,7 @@ export default function RecruiterNotifications() {
                 )}
               </button>
             )}
-            
+
             <button
               onClick={() => deleteNotifications({ read: true })}
               disabled={actionLoading.delete}
@@ -508,20 +562,20 @@ export default function RecruiterNotifications() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.07c.893.204 1.962.32 3.17.32h7.244c1.208 0 2.277-.116 3.17-.32a.75.75 0 00.515-1.07C16.454 11.665 16 9.887 16 8a6 6 0 00-6-6zM8 19a2 2 0 104 0v1a2 2 0 11-4 0v-1z" />
                 </svg>
               </div>
-              
+
               {/* Static Text */}
               <div className="space-y-3">
                 <h3 className="text-xl font-medium text-white mb-2">
                   No notifications found
                 </h3>
-                
+
                 <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-                  {filters.search || filters.type || filters.priority || filters.unread !== null 
+                  {filters.search || filters.type || filters.priority || filters.unread !== null
                     ? "No notifications match your current filters. Try adjusting your search criteria."
                     : "You're all caught up! Check back later for new updates."
                   }
                 </p>
-                
+
                 {/* Clear Filters Button */}
                 {(filters.search || filters.type || filters.priority || filters.unread !== null) && (
                   <div className="mt-4">
@@ -549,21 +603,20 @@ export default function RecruiterNotifications() {
             notifications.map(notification => {
               const isUnread = !notification.read;
               const priorityColor = getPriorityColor(notification.priority);
-              
+
               return (
-                <div 
-                  key={notification._id} 
-                  className={`p-5 rounded-xl border transition-all duration-300 ${
-                    isUnread 
+                <div
+                  key={notification._id}
+                  className={`p-5 rounded-xl border transition-all duration-300 ${isUnread
                       ? 'bg-blue-500/10 border-blue-500/20 shadow-lg'
                       : 'bg-white/5 border-white/10'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-4">
                     <div className={`p-2 rounded-lg ${isUnread ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
                       {getNotificationIcon(notification.type)}
                     </div>
-                    
+
                     <div className="flex-1">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -575,27 +628,27 @@ export default function RecruiterNotifications() {
                               {notification.title}
                             </h3>
                           </div>
-                          
+
                           <p className="text-gray-300 text-sm mb-3 leading-relaxed">
                             {notification.message}
                           </p>
-                          
+
                           {/* Job expiration details for job-related notifications */}
                           {renderJobExpirationDetails(notification)}
-                          
+
                           <div className="flex flex-wrap items-center gap-3 text-xs">
                             <span className={`px-2 py-1 rounded-full border ${priorityColor}`}>
                               {notification.priority?.charAt(0).toUpperCase() + notification.priority?.slice(1)}
                             </span>
-                            
+
                             <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
                               {formatNotificationType(notification.type)}
                             </span>
-                            
+
                             <span className="text-gray-400">
                               {new Date(notification.createdAt).toLocaleString()}
                             </span>
-                            
+
                             {notification.expiresAt && (
                               <span className="text-yellow-400">
                                 Expires: {new Date(notification.expiresAt).toLocaleDateString()}
@@ -603,7 +656,7 @@ export default function RecruiterNotifications() {
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
                           {isUnread && (
                             <button
@@ -618,10 +671,9 @@ export default function RecruiterNotifications() {
                               )}
                             </button>
                           )}
-                          
-                          <span className={`text-xs font-medium ${
-                            isUnread ? 'text-blue-400' : 'text-green-400'
-                          }`}>
+
+                          <span className={`text-xs font-medium ${isUnread ? 'text-blue-400' : 'text-green-400'
+                            }`}>
                             {isUnread ? 'Unread' : 'Read'}
                           </span>
                         </div>
@@ -640,7 +692,7 @@ export default function RecruiterNotifications() {
             <div className="text-sm text-gray-400">
               Showing {((pagination.currentPage - 1) * filters.limit) + 1} to {Math.min(pagination.currentPage * filters.limit, pagination.totalCount)} of {pagination.totalCount} notifications
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
@@ -649,11 +701,11 @@ export default function RecruiterNotifications() {
               >
                 Previous
               </button>
-              
+
               <span className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">
                 {pagination.currentPage}
               </span>
-              
+
               <button
                 onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
                 disabled={!pagination.hasNextPage}

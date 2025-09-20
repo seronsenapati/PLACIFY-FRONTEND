@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
-import { 
+import {
   Briefcase as BriefcaseIcon,
   Calendar as CalendarIcon,
   Bookmark as BookmarkIcon,
@@ -13,11 +13,11 @@ import {
   TrendingUp as TrendingUpIcon,
   AlertCircle as AlertCircleIcon
 } from "../../components/CustomIcons";
+import { formatDate, getStatusStyles } from "../../utils/formatUtils";
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState([]);
-  const [stats, setStats] = useState({});
   const [errorMsg, setErrorMsg] = useState("");
   const [bookmarkedJobs, setBookmarkedJobs] = useState([]);
 
@@ -31,11 +31,7 @@ export default function StudentDashboard() {
       // Load applications data
       const applicationsRes = await api.get("/applications/student");
       setApplications(applicationsRes.data.data?.applications || []);
-      
-      // Load application statistics
-      const statsRes = await api.get("/applications/student/stats");
-      setStats(statsRes.data.data || {});
-      
+
       // Load bookmarked jobs
       const bookmarksRes = await api.get("/jobs/student/bookmarks");
       setBookmarkedJobs(bookmarksRes.data.data || []);
@@ -57,25 +53,8 @@ export default function StudentDashboard() {
     }
   }, [errorMsg]);
 
-  const getStatusStyles = (status) => {
-    const baseStyles = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center";
-    
-    switch(status) {
-      case "reviewed":
-        return `${baseStyles} bg-blue-500/20 text-blue-300 border border-blue-500/30`;
-      case "rejected":
-        return `${baseStyles} bg-red-500/20 text-red-300 border border-red-500/30`;
-      case "pending":
-        return `${baseStyles} bg-yellow-500/20 text-yellow-300 border border-yellow-500/30`;
-      case "withdrawn":
-        return `${baseStyles} bg-gray-500/20 text-gray-300 border border-gray-500/30`;
-      default:
-        return `${baseStyles} bg-gray-500/20 text-gray-300 border border-gray-500/30`;
-    }
-  };
-
   const getStatusIcon = (status) => {
-    switch(status) {
+    switch (status) {
       case "reviewed":
         return <EyeIcon className="w-4 h-4 mr-1.5" />;
       case "rejected":
@@ -91,17 +70,9 @@ export default function StudentDashboard() {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
   if (loading) {
     return (
-      <LoadingScreen 
+      <LoadingScreen
         title="Loading Dashboard"
         subtitle="Preparing your personalized dashboard..."
         steps={[
@@ -117,33 +88,33 @@ export default function StudentDashboard() {
   const totalApplications = applications.length;
   const activeApplications = applications.filter(app => app.status === 'pending').length;
   const savedJobs = bookmarkedJobs.length;
-  
+
   // Calculate success rate
   const reviewedApps = applications.filter(app => app.status === 'reviewed').length;
   const rejectedApps = applications.filter(app => app.status === 'rejected').length;
-  const successRate = (reviewedApps + rejectedApps) > 0 
-    ? Math.round((reviewedApps / (reviewedApps + rejectedApps)) * 100) 
+  const successRate = (reviewedApps + rejectedApps) > 0
+    ? Math.round((reviewedApps / (reviewedApps + rejectedApps)) * 100)
     : 0;
 
   const dashboardStats = [
-    { 
-      label: "Total Applications", 
-      value: totalApplications, 
+    {
+      label: "Total Applications",
+      value: totalApplications,
       icon: <BriefcaseIcon className="w-5 h-5 text-blue-300" />,
     },
-    { 
-      label: "Active Applications", 
-      value: activeApplications, 
+    {
+      label: "Active Applications",
+      value: activeApplications,
       icon: <ClockIcon className="w-5 h-5 text-amber-300" />,
     },
-    { 
-      label: "Saved Jobs", 
-      value: savedJobs, 
+    {
+      label: "Saved Jobs",
+      value: savedJobs,
       icon: <BookmarkIcon className="w-5 h-5 text-purple-300" />,
     },
-    { 
-      label: "Success Rate", 
-      value: `${successRate}%`, 
+    {
+      label: "Success Rate",
+      value: `${successRate}%`,
       icon: <TrendingUpIcon className="w-5 h-5 text-green-300" />,
     },
   ];
@@ -153,8 +124,8 @@ export default function StudentDashboard() {
       <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="mb-5">
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard Overview</h1>
-          <p className="text-gray-400">Your personalized career dashboard</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Dashboard Overview</h1>
+          <p className="text-gray-400 text-sm sm:text-base">Your personalized career dashboard</p>
         </div>
 
         {/* Error Message */}
@@ -170,19 +141,19 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* Summary Cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Summary Cards - Improved responsive grid */}
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 sm:mb-6">
           {dashboardStats.map((stat, index) => (
             <div
               key={stat.label}
-              className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/10 hover:border-white/20 h-full flex flex-col"
+              className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/10 hover:border-white/20 h-full flex flex-col"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-400 truncate">{stat.label}</p>
-                  <p className="mt-2 text-2xl font-bold tabular-nums">{stat.value}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-400 truncate">{stat.label}</p>
+                  <p className="mt-2 text-xl sm:text-2xl font-bold tabular-nums">{stat.value}</p>
                 </div>
-                <div className="flex-shrink-0 ml-4 p-2.5 rounded-lg bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center h-10 w-10">
+                <div className="flex-shrink-0 ml-4 p-2 rounded-lg bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center h-10 w-10">
                   {stat.icon}
                 </div>
               </div>
@@ -190,72 +161,78 @@ export default function StudentDashboard() {
           ))}
         </section>
 
-        {/* Recent Applications */}
-        <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5 mt-6">
-          <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-            <h2 className="text-xl font-semibold">Recent Applications</h2>
-            <p className="text-sm text-gray-400 mt-1">Your recent job applications</p>
+        {/* Recent Applications - Improved responsive table */}
+        <section className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+            <h2 className="text-lg sm:text-xl font-semibold">Recent Applications</h2>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">Your recent job applications</p>
           </div>
-          
+
+          {/* Responsive table container */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Job Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Company</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Applied</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Job Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Applied</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {applications.slice(0, 5).map((app, index) => (
-                  <tr 
+                  <tr
                     key={app._id || app.id || index}
                     className={`transition-colors duration-200 ${index % 2 === 0 ? 'bg-white/2.5' : 'bg-white/5'}`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3">
                       <div className="text-sm font-medium">
                         {app.job?.title || app.jobDetails?.title || 'Unknown Position'}
                       </div>
-                      <div className="text-sm text-gray-400">
+                      {/* Show company name on mobile in the same cell */}
+                      <div className="text-xs text-gray-400 md:hidden">
+                        {app.job?.company?.name || app.jobDetails?.company?.name || 'Unknown Company'}
+                      </div>
+                      <div className="text-xs text-gray-400 md:hidden">
                         {app.job?.role || app.jobDetails?.role || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-4 py-3 text-sm font-medium hidden md:table-cell">
                       {app.job?.company?.name || app.jobDetails?.company?.name || 'Unknown Company'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td className="px-4 py-3 text-xs text-gray-400">
                       <div className="flex items-center">
-                        <ClockIcon className="w-4 h-4 mr-1.5 text-gray-500" />
+                        <ClockIcon className="w-3 h-3 mr-1.5 text-gray-500" />
                         {formatDate(app.createdAt)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-4 py-3 text-center">
                       <span className={getStatusStyles(app.status)}>
                         {getStatusIcon(app.status)}
-                        {formatStatus(app.status)}
+                        <span className="hidden sm:inline">{formatStatus(app.status)}</span>
+                        <span className="sm:hidden">{app.status.charAt(0).toUpperCase()}</span>
                       </span>
                     </td>
                   </tr>
                 ))}
-                
+
                 {!applications.length && (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center">
+                    <td colSpan="4" className="px-4 py-8 text-center">
                       <div className="text-gray-400">No applications found</div>
-                      <p className="mt-1 text-sm text-gray-500">Your job applications will appear here</p>
+                      <p className="mt-1 text-xs sm:text-sm text-gray-500">Your job applications will appear here</p>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          
-          <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
-            <p className="text-sm text-gray-400">
+
+          <div className="px-4 sm:px-6 py-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs sm:text-sm text-gray-400">
               Showing <span className="font-medium">1-{Math.min(5, applications.length)}</span> of <span className="font-medium">{applications.length}</span> applications
             </p>
-            <button className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">
+            <button className="py-2 px-3 sm:py-2.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition w-full sm:w-auto">
               View all applications →
             </button>
           </div>

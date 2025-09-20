@@ -17,11 +17,13 @@ import {
   CheckCircle as CheckCircleIcon,
   Clock as ClockIcon,
   UserCheck as UserCheckIcon,
-  FileText as FileTextIcon
+  FileText as FileTextIcon,
+  MapPin as MapPinIcon,
+  Banknote as BanknoteIcon
 } from "../../components/CustomIcons";
 import { formatDate } from "../../utils/formatUtils";
 
-export default function ManageJobs() {
+export default function RecruiterManageJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
@@ -231,20 +233,20 @@ export default function ManageJobs() {
 
   const getDaysUntilExpiration = (expiresAt) => {
     if (!expiresAt) return null;
-    
+
     const expirationDate = new Date(expiresAt);
     const today = new Date();
     const diffTime = expirationDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     return diffDays;
   };
 
   const getExpirationStatus = (expiresAt) => {
     const daysUntilExpiration = getDaysUntilExpiration(expiresAt);
-    
+
     if (daysUntilExpiration === null) return { text: 'No expiration', color: 'text-gray-400' };
-    
+
     if (daysUntilExpiration < 0) {
       return { text: 'Expired', color: 'text-red-400' };
     } else if (daysUntilExpiration <= 3) {
@@ -313,54 +315,54 @@ export default function ManageJobs() {
 
         {/* Statistics Cards */}
         {Object.keys(stats).length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <BriefcaseIcon className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Total Jobs</p>
-                  <p className="text-xl font-semibold text-white">{stats.totalJobs || 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Total Jobs</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">{stats.totalJobs || 0}</p>
                 </div>
               </div>
             </div>
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Active</p>
-                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.active || 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Active</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">{stats.jobsByStatus?.active || 0}</p>
                 </div>
               </div>
             </div>
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Inactive</p>
-                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.inactive || 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Inactive</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">{stats.jobsByStatus?.inactive || 0}</p>
                 </div>
               </div>
             </div>
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Expired</p>
-                  <p className="text-xl font-semibold text-white">{stats.jobsByStatus?.expired || 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Expired</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">{stats.jobsByStatus?.expired || 0}</p>
                 </div>
               </div>
             </div>
@@ -414,33 +416,35 @@ export default function ManageJobs() {
               </div>
             </div>
 
-            {/* Status Filter */}
-            <div>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="expired">Expired</option>
-              </select>
-            </div>
+            <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
 
-            {/* Job Type Filter */}
-            <div>
-              <select
-                value={filters.jobType}
-                onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Types</option>
-                <option value="internship">Internship</option>
-                <option value="full-time">Full-time</option>
-                <option value="part-time">Part-time</option>
-                <option value="contract">Contract</option>
-              </select>
+              {/* Job Type Filter */}
+              <div>
+                <select
+                  value={filters.jobType}
+                  onChange={(e) => handleFilterChange('jobType', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">All Types</option>
+                  <option value="internship">Internship</option>
+                  <option value="full-time">Full-time</option>
+                  <option value="part-time">Part-time</option>
+                  <option value="contract">Contract</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -635,7 +639,7 @@ export default function ManageJobs() {
                       </button>
                     </div>
 
-                    <button 
+                    <button
                       onClick={() => {
                         // Navigate to the applications page for this job
                         window.location.href = `/recruiter/applications?jobId=${job._id}`;
@@ -767,13 +771,13 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
 
       // Call the AI generation endpoint
       const res = await api.post("/jobs/generate-description", requestData);
-      
+
       // Update the form data with the generated description
       setFormData(prev => ({
         ...prev,
         desc: res.data.data.description
       }));
-      
+
       // Clear any previous errors for the description field
       setFieldErrors(prev => ({
         ...prev,
@@ -781,7 +785,7 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
       }));
     } catch (err) {
       console.error('Error generating job description:', err);
-      
+
       // Handle different error cases
       if (err.response?.status === 401) {
         onError("Authentication required. Please log in again.");
@@ -865,7 +869,7 @@ function JobModal({ job, onClose, onSave, onError, checkCompanyProfile }) {
       const expireDate = new Date(formData.expiresAt);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (expireDate < today) {
         errors.expiresAt = 'Expiration date must be in the future';
       }

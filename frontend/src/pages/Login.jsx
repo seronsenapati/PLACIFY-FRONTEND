@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../services/api";
-import { setAuthData } from "../utils/auth";
+import { setAuthData, clearRateLimitData } from "../utils/auth";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ const Login = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  // Bypass rate limiting for development
   const [rateLimited, setRateLimited] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState(0);
 
@@ -34,23 +34,6 @@ const Login = () => {
       return () => clearTimeout(timer);
     }
   }, [errorMsg, successMsg]);
-
-  // Rate limit countdown effect
-  useEffect(() => {
-    let interval;
-    if (retryCountdown > 0) {
-      interval = setInterval(() => {
-        setRetryCountdown(prev => {
-          if (prev <= 1) {
-            setRateLimited(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [retryCountdown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,6 +68,9 @@ const Login = () => {
 
       setAuthData(token, user.role, user.name, user._id || user.id);
       
+      // Clear any existing rate limit data on successful login
+      clearRateLimitData('login');
+      
       // Check for saved redirect path
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
@@ -111,10 +97,16 @@ const Login = () => {
             errorMessage = "Invalid credentials. Please check your email and password.";
             break;
           case 429:
-            setRateLimited(true);
-            setRetryCountdown(60); // 60 second countdown
-            setRetryCount(prev => prev + 1);
-            errorMessage = "Too many login attempts. Please wait a few minutes before trying again.";
+            // Bypass rate limiting for development - still show the error but don't enforce the limit
+            console.log("Rate limit hit, but bypassing for development");
+            errorMessage = "Too many login attempts. Rate limiting bypassed for development.";
+            // Don't set rate limited state
+            // setRateLimited(true);
+            // const retryAfter = error.response.headers['retry-after'] || 30;
+            // const countdownTime = Math.min(parseInt(retryAfter), 30);
+            // setRetryCountdown(countdownTime);
+            // setRetryCount(prev => prev + 1);
+            // setRateLimitData('login', countdownTime);
             break;
           case 500:
             errorMessage = "Server error. Please try again later.";
@@ -134,7 +126,12 @@ const Login = () => {
         }
       } else if (error.request) {
         // Network error
-        errorMessage = 'Network error. Please check your internet connection and try again.';
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          errorMessage = 'Request timed out. Retrying...';
+          // For timeout errors, we let the API service handle retries
+        } else {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        }
       } else {
         // Other errors
         errorMessage = 'An unexpected error occurred. Please try again.';
@@ -147,20 +144,40 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4"
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6"
     style={{
           background:
             "linear-gradient(135deg, #ffffff14 0%, rgba(255, 255, 255, 0.12) 19%, rgba(255, 255, 255, 0.05) 28%, transparent 35%, transparent 100%), linear-gradient(to bottom, #18181b, #000000)",
         }}>
       <div className="w-full max-w-md">
-        <div className="p-8 rounded-xl shadow-2xl border border-white/20 mt-10 bg-white/5 backdrop-blur-lg">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
-            <p className="mt-2 text-gray-300">Login to access your account</p>
+        {/* Development utility - remove in production */}
+        {import.meta.env.DEV && (
+          <div className="mb-4">
+            <details className="text-xs">
+              <summary className="text-yellow-300 cursor-pointer">Development Utilities</summary>
+              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded">
+                <p className="text-yellow-200 mb-2">Rate limiting is bypassed in development mode.</p>
+                <button 
+                  onClick={() => {
+                    localStorage.clear();
+                    window.location.reload();
+                  }}
+                  className="px-2 py-1 bg-red-500/20 text-red-200 rounded text-xs hover:bg-red-500/30"
+                >
+                  Clear All Local Storage & Refresh
+                </button>
+              </div>
+            </details>
+          </div>
+        )}
+        <div className="p-6 sm:p-8 rounded-xl shadow-2xl border border-white/20 mt-8 sm:mt-10 bg-white/5 backdrop-blur-lg">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">Welcome Back</h2>
+            <p className="mt-1 sm:mt-2 text-gray-300 text-sm sm:text-base">Login to access your account</p>
           </div>
 
           {successMsg && (
-            <div className="mb-6 p-3 bg-green-500/20 text-green-300 text-sm rounded-md flex justify-between items-center">
+            <div className="mb-5 sm:mb-6 p-3 bg-green-500/20 text-green-300 text-sm rounded-md flex justify-between items-center">
               <span>{successMsg}</span>
               <button
                 onClick={() => setSuccessMsg("")} // FIXED
@@ -186,7 +203,7 @@ const Login = () => {
           )}
 
           {errorMsg && (
-            <div className="mb-6 p-3 bg-red-500/20 text-red-300 text-sm rounded-md flex justify-between items-center">
+            <div className="mb-5 sm:mb-6 p-3 bg-red-500/20 text-red-300 text-sm rounded-md flex justify-between items-center">
               <div className="flex items-start gap-2">
                 {errorMsg.includes('Too many login attempts') ? (
                   <svg
@@ -226,7 +243,7 @@ const Login = () => {
                 </p>
                 <p>{errorMsg}</p>
                 {errorMsg.includes('Too many login attempts') && (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-2 sm:mt-3 space-y-2">
                     {retryCountdown > 0 && (
                       <div className="flex items-center gap-2 text-xs">
                         <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,7 +281,7 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
             <div>
               <label
                 htmlFor="email"
@@ -278,10 +295,11 @@ const Login = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
+                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading || rateLimited}
               />
             </div>
 
@@ -298,16 +316,18 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="w-full pr-10 px-4 py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white"
+                  className="w-full pr-10 px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading || rateLimited}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-200 focus:outline-none"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={loading || rateLimited}
                 >
                   {showPassword ? (
                     <svg
@@ -360,7 +380,7 @@ const Login = () => {
                 loading || rateLimited
                   ? "opacity-50 cursor-not-allowed bg-gray-600 border-gray-500 text-gray-300" 
                   : "bg-white/10 border-white/30 text-white hover:bg-white/20"
-              }`}
+              } text-sm sm:text-base`}
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
@@ -380,7 +400,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
+          <div className="mt-5 sm:mt-6 text-center text-sm">
             <p className="text-gray-300">
               Don&apos;t have an account?{" "}
               <Link

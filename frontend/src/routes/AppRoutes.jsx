@@ -29,10 +29,10 @@ import StudentSavedJobs from "../pages/student/StudentSavedjobs";
 
 // Recruiter feature pages
 import RecruiterSettings from "../pages/recruiter/RecruiterSettings";
-import CompanyProfile from "../pages/recruiter/CompanyProfile";
+import RecruiterCompanyProfile from "../pages/recruiter/RecruiterCompanyProfile";
 import RecruiterNotifications from "../pages/recruiter/RecruiterNotifications";
 import RecruiterApplications from "../pages/recruiter/RecruiterApplications";
-import ManageJobs from "../pages/recruiter/ManageJobs";
+import RecruiterManageJobs from "../pages/recruiter/RecruiterManageJobs";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem("token");
@@ -183,7 +183,7 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["recruiter"]}>
             <DashboardLayout>
-              <ManageJobs />
+              <RecruiterManageJobs />
             </DashboardLayout>
           </ProtectedRoute>
         }
@@ -213,7 +213,7 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["recruiter"]}>
             <DashboardLayout>
-              <CompanyProfile />
+              <RecruiterCompanyProfile />
             </DashboardLayout>
           </ProtectedRoute>
         }

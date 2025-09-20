@@ -4,11 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { isLoggedIn, getRole, logout } from "../utils/auth";
 import LoadingScreen from "../components/LoadingScreen";
-import { 
-  Search, 
-  MapPin, 
-  Building, 
-  Briefcase, 
+import {
+  Search,
+  MapPin,
+  Building,
+  Briefcase,
   Bookmark as BookmarkIcon,
   Clock,
   User,
@@ -33,7 +33,7 @@ export default function JobListing() {
   const [resume, setResume] = useState(null);
   const [coverLetter, setCoverLetter] = useState('');
   const navigate = useNavigate();
-  
+
   const loggedIn = isLoggedIn();
   const role = getRole();
 
@@ -46,26 +46,26 @@ export default function JobListing() {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
       // Fetch jobs, bookmarks, and applications in parallel
       const requests = [
         api.get('/jobs'),
         loggedIn && role === 'student' ? api.get('/bookmarks') : Promise.resolve({ data: [] })
       ];
-      
+
       // Add applications request if user is a student
       if (loggedIn && role === 'student') {
         requests.push(api.get('/applications/student'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
-      
+
       const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
-      
+
       console.log('Jobs response:', jobsRes);
       console.log('Bookmarks response:', bookmarksRes);
       console.log('Applications response:', applicationsRes);
-      
+
       // Extract jobs from the correct response structure
       let jobsData = [];
       if (jobsRes.data.data && Array.isArray(jobsRes.data.data.jobs)) {
@@ -77,19 +77,19 @@ export default function JobListing() {
       } else if (jobsRes.data.data && Array.isArray(jobsRes.data.data)) {
         jobsData = jobsRes.data.data;
       }
-      
+
       console.log('Processed jobs data:', jobsData);
       setJobs(jobsData);
-      
+
       // Process bookmarks if user is a student
       if (loggedIn && role === 'student' && bookmarksRes.data) {
-        const bookmarksData = Array.isArray(bookmarksRes.data) 
-          ? bookmarksRes.data 
+        const bookmarksData = Array.isArray(bookmarksRes.data)
+          ? bookmarksRes.data
           : (bookmarksRes.data?.data || []);
         const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
         setBookmarked(bSet);
       }
-      
+
       // Process applications if user is a student
       if (loggedIn && role === 'student' && applicationsRes.data) {
         const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
@@ -105,7 +105,7 @@ export default function JobListing() {
         response: err.response,
         request: err.request
       });
-      
+
       // Provide more specific error messages
       if (err.code === 'ECONNABORTED') {
         setError('Connection timeout. The server is taking too long to respond. Please try again later.');
@@ -127,14 +127,14 @@ export default function JobListing() {
       navigate('/login');
       return;
     }
-    
+
     if (role !== 'student') {
       setError('Only students can apply for jobs');
       // Scroll to top to make error visible
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    
+
     // Check if user has already applied to this job
     if (applied.has(jobId)) {
       setError('You have already applied to this job');
@@ -142,12 +142,12 @@ export default function JobListing() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    
+
     // Close the job detail modal if it's open
     if (isModalOpen) {
       closeJobModal();
     }
-    
+
     // Open the apply modal to collect resume and cover letter
     const job = jobs.find(j => (j._id || j.id) === jobId);
     console.log('Found job in jobs array:', job);
@@ -162,37 +162,37 @@ export default function JobListing() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    
+
     try {
       const formData = new FormData();
       formData.append('resume', resume);
       if (coverLetter) {
         formData.append('coverLetter', coverLetter);
       }
-      
+
       // Apply to job with resume upload
       const response = await api.post(`/jobs/${jobId}/apply`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       // Close the apply modal
       setIsApplyModalOpen(false);
       setResume(null);
       setCoverLetter('');
-      
+
       // Add job to applied set
       setApplied(prev => {
         const newApplied = new Set(prev);
         newApplied.add(jobId);
         return newApplied;
       });
-      
+
       // Show success message
       setSuccess('Application submitted successfully!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
+
       // Clear success message after 5 seconds
       setTimeout(() => {
         setSuccess(null);
@@ -204,17 +204,17 @@ export default function JobListing() {
         if (err.response.status === 400 || err.response.status === 409) {
           // Handle both 400 and 409 errors for already applied cases
           // Check if the error message indicates already applied
-          if (err.response.data && err.response.data.message && 
-              typeof err.response.data.message === 'string' &&
-              err.response.data.message.toLowerCase().includes('already')) {
+          if (err.response.data && err.response.data.message &&
+            typeof err.response.data.message === 'string' &&
+            err.response.data.message.toLowerCase().includes('already')) {
             errorMessage = 'You have already applied to this job';
-          } else if (err.response.data && err.response.data.error && 
-                     typeof err.response.data.error === 'string' &&
-                     err.response.data.error.toLowerCase().includes('already')) {
+          } else if (err.response.data && err.response.data.error &&
+            typeof err.response.data.error === 'string' &&
+            err.response.data.error.toLowerCase().includes('already')) {
             // Check if error is in the 'error' field instead
             errorMessage = 'You have already applied to this job';
-          } else if (typeof err.response.data === 'string' && 
-                     err.response.data.toLowerCase().includes('already')) {
+          } else if (typeof err.response.data === 'string' &&
+            err.response.data.toLowerCase().includes('already')) {
             // Check if the entire response is a string containing 'already'
             errorMessage = 'You have already applied to this job';
           } else if (JSON.stringify(err.response.data).toLowerCase().includes('already')) {
@@ -245,11 +245,11 @@ export default function JobListing() {
       } else {
         errorMessage = 'Failed to apply for job. Please try again.';
       }
-      
+
       setError(errorMessage);
       // Scroll to top to make error visible
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
+
       // Clear error after 5 seconds
       setTimeout(() => {
         setError(null);
@@ -260,26 +260,26 @@ export default function JobListing() {
   const toggleBookmark = async (job) => {
     const jobId = job._id || job.id;
     console.log('Toggle bookmark for job:', jobId);
-    
+
     if (!loggedIn) {
       console.log('User not logged in, redirecting to login');
       navigate('/login');
       return;
     }
-    
+
     if (role !== 'student') {
       console.log('User is not a student, showing error');
       setError('Only students can bookmark jobs');
       // Scroll to top to make error visible
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
+
       // Clear error after 5 seconds
       setTimeout(() => {
         setError(null);
       }, 5000);
       return;
     }
-    
+
     try {
       if (bookmarked.has(jobId)) {
         console.log('Removing bookmark for job:', jobId);
@@ -298,7 +298,7 @@ export default function JobListing() {
         setBookmarked(prev => new Set(prev).add(jobId));
         setSuccess('Job bookmarked successfully');
       }
-      
+
       // Clear success message after 5 seconds
       setTimeout(() => {
         setSuccess(null);
@@ -311,11 +311,11 @@ export default function JobListing() {
       } else {
         errorMessage = 'Failed to update bookmark. Please try again.';
       }
-      
+
       setError(errorMessage);
       // Scroll to top to make error visible
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
+
       // Clear error after 5 seconds
       setTimeout(() => {
         setError(null);
@@ -343,11 +343,11 @@ export default function JobListing() {
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
-          <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
-          <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-green-500/10 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}}></div>
+          <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-green-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
         <div className="relative z-10">
-          <LoadingScreen 
+          <LoadingScreen
             title="Loading Jobs"
             subtitle="Fetching the latest job opportunities..."
             steps={[
@@ -370,11 +370,11 @@ export default function JobListing() {
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-green-500/10 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}}></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-green-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
-      
-      <div className="relative z-10 min-h-[calc(100vh-4rem)] flex justify-center items-start w-full p-4">
+
+      <div className="relative z-10 min-h-[calc(100vh-4rem)] flex justify-center items-start w-full p-2">
         <div className="w-full max-w-1xl mx-auto p-4 bg-black/20 rounded-lg min-h-[calc(100vh-6rem)]">
           {/* Header */}
           <div className="mb-6">
@@ -417,7 +417,7 @@ export default function JobListing() {
               </div>
               <h3 className="text-xl font-medium text-white mb-2">No jobs available</h3>
               <p className="text-gray-400 mb-6">Check back later for new opportunities</p>
-              <button 
+              <button
                 onClick={fetchJobs}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition"
               >
@@ -431,8 +431,8 @@ export default function JobListing() {
                 const isBookmarked = bookmarked.has(jobId);
                 const isApplied = applied.has(jobId);
                 return (
-                  <div 
-                    key={jobId} 
+                  <div
+                    key={jobId}
                     className="group relative bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-5"
                   >
                     <div className="flex justify-between items-start">
@@ -446,7 +446,7 @@ export default function JobListing() {
                             <p className="text-gray-300">{job.company?.name || job.createdBy?.name || 'Company Name'}</p>
                           </div>
                         </div>
-                        
+
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                           <div className="flex items-center gap-2 text-sm">
                             <MapPin className="w-4 h-4 text-gray-400" />
@@ -471,7 +471,7 @@ export default function JobListing() {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="mt-4 flex flex-wrap gap-2">
                           {job.skills && job.skills.slice(0, 5).map((skill, index) => (
                             <span key={index} className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
@@ -485,22 +485,21 @@ export default function JobListing() {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col items-end gap-3 ml-4">
                         {role === 'student' && (
-                          <button 
+                          <button
                             onClick={() => toggleBookmark(job)}
-                            className={`p-2 rounded-lg border ${
-                              isBookmarked 
-                                ? "border-yellow-400 text-yellow-300 bg-yellow-400/10" 
-                                : "border-white/30 text-white bg-white/10"
-                            }`}
+                            className={`p-2 rounded-lg border ${isBookmarked
+                              ? "border-yellow-400 text-yellow-300 bg-yellow-400/10"
+                              : "border-white/30 text-white bg-white/10"
+                              }`}
                             title={isBookmarked ? "Remove bookmark" : "Bookmark job"}
                           >
                             <BookmarkIcon className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} />
                           </button>
                         )}
-                        <button 
+                        <button
                           onClick={() => openJobModal(job)}
                           className="px-4 py-2 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2"
                         >
@@ -508,14 +507,13 @@ export default function JobListing() {
                           <span>View</span>
                         </button>
                         {role === 'student' && (
-                          <button 
+                          <button
                             onClick={() => handleApply(jobId)}
                             disabled={isApplied}
-                            className={`px-4 py-2 font-semibold rounded-full border transition flex items-center justify-center ${
-                              isApplied
-                                ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
-                                : "bg-white/10 border-white/30 text-white hover:bg-green-500/20 hover:border-green-500/50"
-                            }`}
+                            className={`px-4 py-2 font-semibold rounded-full border transition flex items-center justify-center ${isApplied
+                              ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
+                              : "bg-white/10 border-white/30 text-white hover:bg-green-500/20 hover:border-green-500/50"
+                              }`}
                           >
                             {isApplied ? (
                               <>
@@ -621,8 +619,8 @@ export default function JobListing() {
                     <div>
                       <p className="text-xs text-gray-400">Posted</p>
                       <p className="text-white">
-                        {selectedJob.createdAt 
-                          ? new Date(selectedJob.createdAt).toLocaleDateString() 
+                        {selectedJob.createdAt
+                          ? new Date(selectedJob.createdAt).toLocaleDateString()
                           : 'Date not specified'}
                       </p>
                     </div>
@@ -645,8 +643,8 @@ export default function JobListing() {
                     <h3 className="text-lg font-semibold text-white mb-3">Required Skills</h3>
                     <div className="flex flex-wrap gap-2">
                       {selectedJob.skills.map((skill, index) => (
-                        <span 
-                          key={index} 
+                        <span
+                          key={index}
                           className="px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-full text-sm border border-blue-500/30"
                         >
                           {skill}
@@ -663,11 +661,10 @@ export default function JobListing() {
                       onClick={() => {
                         toggleBookmark(selectedJob);
                       }}
-                      className={`px-4 py-2.5 font-semibold rounded-lg transition ${
-                        bookmarked.has(selectedJob._id || selectedJob.id)
-                          ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/50"
-                          : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
-                      }`}
+                      className={`px-4 py-2.5 font-semibold rounded-lg transition ${bookmarked.has(selectedJob._id || selectedJob.id)
+                        ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/50"
+                        : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
+                        }`}
                     >
                       {bookmarked.has(selectedJob._id || selectedJob.id) ? "Bookmarked" : "Bookmark"}
                     </button>
@@ -686,11 +683,10 @@ export default function JobListing() {
                         }
                       }}
                       disabled={applied.has(selectedJob._id || selectedJob.id)}
-                      className={`px-4 py-2.5 font-semibold rounded-lg border transition flex items-center justify-center ${
-                        applied.has(selectedJob._id || selectedJob.id)
-                          ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
-                          : "bg-green-600 hover:bg-green-500 text-white"
-                      }`}
+                      className={`px-4 py-2.5 font-semibold rounded-lg border transition flex items-center justify-center ${applied.has(selectedJob._id || selectedJob.id)
+                        ? "bg-green-500/20 border-green-500/50 text-green-300 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-500 text-white"
+                        }`}
                     >
                       {applied.has(selectedJob._id || selectedJob.id) ? (
                         <>
