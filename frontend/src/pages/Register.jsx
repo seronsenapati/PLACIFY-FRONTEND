@@ -7,7 +7,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
-    username: "", // ✅ added
+    username: "",
     email: "",
     password: "",
     role: "student",
@@ -19,6 +19,17 @@ const Register = () => {
   // Bypass rate limiting for development
   const [rateLimited, setRateLimited] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState(0);
+  // Field-specific errors
+  const [fieldErrors, setFieldErrors] = useState({});
+  // Password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    hasUpperCase: false,
+    hasLowerCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+  });
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -31,20 +42,133 @@ const Register = () => {
     }
   }, [errorMsg, successMsg]);
 
+  // Password validation logic
+  useEffect(() => {
+    if (formData.password) {
+      const validation = {
+        length: formData.password.length >= 8,
+        hasUpperCase: /[A-Z]/.test(formData.password),
+        hasLowerCase: /[a-z]/.test(formData.password),
+        hasNumber: /\d/.test(formData.password),
+        hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password),
+      };
+      setPasswordValidation(validation);
+    }
+  }, [formData.password]);
+
+  const validateField = (name, value) => {
+    let error = "";
+    
+    switch (name) {
+      case "name":
+        if (!value.trim()) {
+          error = "Full name is required";
+        } else if (value.trim().length < 2) {
+          error = "Full name must be at least 2 characters";
+        }
+        break;
+      case "username":
+        if (!value.trim()) {
+          error = "Username is required";
+        } else if (value.trim().length < 3) {
+          error = "Username must be at least 3 characters";
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+          error = "Username can only contain letters, numbers, and underscores";
+        }
+        break;
+      case "email":
+        if (!value.trim()) {
+          error = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          error = "Please enter a valid email address";
+        }
+        break;
+      case "password":
+        if (!value) {
+          error = "Password is required";
+        } else if (value.length < 8) {
+          error = "Password must be at least 8 characters";
+        } else if (!/[A-Z]/.test(value)) {
+          error = "Password must contain at least one uppercase letter";
+        } else if (!/[a-z]/.test(value)) {
+          error = "Password must contain at least one lowercase letter";
+        } else if (!/\d/.test(value)) {
+          error = "Password must contain at least one number";
+        } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)) {
+          error = "Password must contain at least one special character (!@#$%^&*()_+-=[]{};':\"\\|,.<>/?";
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return error;
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ""
+      }));
+    }
+    
+    // Show password requirements when user starts typing in password field
+    if (name === 'password') {
+      setShowPasswordRequirements(true);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    
+    if (error) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate all fields before submission
+    let hasErrors = false;
+    const newFieldErrors = {};
+    
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key]);
+      if (error) {
+        newFieldErrors[key] = error;
+        hasErrors = true;
+      }
+    });
+    
+    if (hasErrors) {
+      setFieldErrors(newFieldErrors);
+      setErrorMsg("Please fix the errors below and try again.");
+      return;
+    }
+    
     setErrorMsg("");
     setSuccessMsg("");
+    setFieldErrors({});
     setLoading(true);
 
     try {
+      // Log the request for debugging
+      console.log("Sending registration request with data:", formData);
+      
       // Use the API service which now uses the proxy
       const response = await api.post('/auth/register', formData);
 
@@ -65,6 +189,24 @@ const Register = () => {
         switch (error.response.status) {
           case 400:
             errorMessage = "Invalid registration data. Please check all fields and try again.";
+            // Extract specific field errors if available
+            if (error.response.data?.errors) {
+              const backendErrors = {};
+              error.response.data.errors.forEach(err => {
+                // Map backend field names to frontend field names if needed
+                const fieldName = err.field || err.param || 'general';
+                // Special handling for common field name mappings
+                const mappedFieldName = fieldName === 'username' ? 'username' :
+                                      fieldName === 'email' ? 'email' :
+                                      fieldName === 'password' ? 'password' :
+                                      fieldName === 'name' ? 'name' : 'general';
+                backendErrors[mappedFieldName] = err.message || errorMessage;
+              });
+              setFieldErrors(backendErrors);
+            } else if (error.response.data?.message) {
+              // If there's a general message but no specific field errors
+              errorMessage = error.response.data.message;
+            }
             break;
           case 409:
             errorMessage = "Email or username already exists. Please try different credentials.";
@@ -96,7 +238,7 @@ const Register = () => {
         
         // Handle error response data if available
         if (error.response.data) {
-          if (error.response.data.message) {
+          if (error.response.data.message && !error.response.data.errors) {
             errorMessage = error.response.data.message;
           }
           // Handle validation errors from backend
@@ -106,6 +248,7 @@ const Register = () => {
         }
       } else if (error.request) {
         // Network error
+        console.error('No response received:', error.request);
         if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
           errorMessage = 'Request timed out. Retrying...';
           // For timeout errors, we let the API service handle retries
@@ -114,6 +257,7 @@ const Register = () => {
         }
       } else {
         // Other errors
+        console.error('Error setting up request:', error.message);
         errorMessage = 'An unexpected error occurred. Please try again.';
       }
       
@@ -257,12 +401,18 @@ const Register = () => {
                 name="name"
                 type="text"
                 required
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base ${
+                  fieldErrors.name ? 'border-red-500' : 'border-gray-500'
+                }`}
                 placeholder="John Doe"
                 value={formData.name}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={loading || rateLimited}
               />
+              {fieldErrors.name && (
+                <p className="mt-1 text-red-400 text-xs">{fieldErrors.name}</p>
+              )}
             </div>
 
             {/* ✅ New Username Field */}
@@ -278,12 +428,18 @@ const Register = () => {
                 name="username"
                 type="text"
                 required
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base ${
+                  fieldErrors.username ? 'border-red-500' : 'border-gray-500'
+                }`}
                 placeholder="johndoe123"
                 value={formData.username}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={loading || rateLimited}
               />
+              {fieldErrors.username && (
+                <p className="mt-1 text-red-400 text-xs">{fieldErrors.username}</p>
+              )}
             </div>
 
             <div>
@@ -298,12 +454,18 @@ const Register = () => {
                 name="email"
                 type="email"
                 required
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base ${
+                  fieldErrors.email ? 'border-red-500' : 'border-gray-500'
+                }`}
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={loading || rateLimited}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-red-400 text-xs">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -319,10 +481,14 @@ const Register = () => {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required
-                  className="w-full pr-10 px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-500 rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base"
+                  className={`w-full pr-10 px-3 sm:px-4 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-800 bg-transparent text-white text-sm sm:text-base ${
+                    fieldErrors.password ? 'border-red-500' : 'border-gray-500'
+                  }`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  onFocus={() => setShowPasswordRequirements(true)}
                   disabled={loading || rateLimited}
                 />
                 <button
@@ -380,6 +546,78 @@ const Register = () => {
                   )}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-red-400 text-xs">{fieldErrors.password}</p>
+              )}
+              
+              {/* Password Requirements */}
+              {showPasswordRequirements && (
+                <div className="mt-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <p className="text-blue-300 font-medium text-xs mb-1">Password Requirements</p>
+                  <ul className="text-blue-200 text-xs space-y-1">
+                    <li className={`flex items-center ${passwordValidation.length ? 'text-green-400' : ''}`}>
+                      {passwordValidation.length ? (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      At least 8 characters
+                    </li>
+                    <li className={`flex items-center ${passwordValidation.hasUpperCase ? 'text-green-400' : ''}`}>
+                      {passwordValidation.hasUpperCase ? (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      Contains uppercase letter (A-Z)
+                    </li>
+                    <li className={`flex items-center ${passwordValidation.hasLowerCase ? 'text-green-400' : ''}`}>
+                      {passwordValidation.hasLowerCase ? (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      Contains lowercase letter (a-z)
+                    </li>
+                    <li className={`flex items-center ${passwordValidation.hasNumber ? 'text-green-400' : ''}`}>
+                      {passwordValidation.hasNumber ? (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      Contains number (0-9)
+                    </li>
+                    <li className={`flex items-center ${passwordValidation.hasSpecialChar ? 'text-green-400' : ''}`}>
+                      {passwordValidation.hasSpecialChar ? (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      Contains special character (!@#$%^&amp;*()_+-=[]&#123;&#125;;':"\|,.&lt;&gt;/?))
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="relative">
@@ -410,16 +648,16 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading || rateLimited}
-              className={`w-full py-2.5 px-4 font-semibold rounded-full border transition ${
+              className={`w-full py-2.5 sm:py-3 px-4 rounded-lg font-medium text-sm sm:text-base transition-all ${
                 loading || rateLimited
-                  ? "opacity-50 cursor-not-allowed bg-gray-600 border-gray-500 text-gray-300" 
-                  : "bg-white/10 border-white/30 text-white hover:bg-white/20"
-              } text-sm sm:text-base`}
+                  ? "bg-gray-600 cursor-not-allowed"
+                  : "bg-white text-gray-900 hover:bg-gray-200 focus:ring-2 focus:ring-gray-800"
+              }`}
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Registering...
+                  <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                  Creating account...
                 </div>
               ) : rateLimited ? (
                 <div className="flex items-center justify-center gap-2">
@@ -429,19 +667,19 @@ const Register = () => {
                   {retryCountdown > 0 ? `Retry in ${retryCountdown}s` : "Rate Limited"}
                 </div>
               ) : (
-                "Register"
+                "Create Account"
               )}
             </button>
           </form>
 
-          <div className="mt-4 sm:mt-5 text-center text-sm">
+          <div className="mt-5 sm:mt-6 text-center text-sm">
             <p className="text-gray-300">
               Already have an account?{" "}
               <Link
                 to="/login"
                 className="font-medium text-white hover:text-gray-200"
               >
-                Login
+                Sign in
               </Link>
             </p>
           </div>

@@ -167,7 +167,7 @@ export default function Landing() {
               <p className="text-gray-400 text-sm">
                 Using AI-powered matching and personalized career support to
                 ensure the best fit for both students and employers.
-                hustle  - free job creation by AI for recruiter recruiters.
+                hustle  - free job creation by AI for recruiters.
               </p>
             </div>
           </div>
