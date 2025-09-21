@@ -168,8 +168,24 @@ export default function StudentSettings() {
       setErrorMsg("Passwords do not match. Please try again.");
       return;
     }
-    if (pwd.newPassword.length < 6) {
-      setErrorMsg("Password must be at least 6 characters long.");
+    if (pwd.newPassword.length < 8) {
+      setErrorMsg("Password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(pwd.newPassword)) {
+      setErrorMsg("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(pwd.newPassword)) {
+      setErrorMsg("Password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/\d/.test(pwd.newPassword)) {
+      setErrorMsg("Password must contain at least one number.");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd.newPassword)) {
+      setErrorMsg("Password must contain at least one special character.");
       return;
     }
     
@@ -489,9 +505,11 @@ export default function StudentSettings() {
                 <div>
                   <p className="text-blue-300 font-medium text-sm">Password Requirements</p>
                   <ul className="text-blue-200 text-xs mt-1 space-y-1">
-                    <li>• At least 6 characters long</li>
-                    <li>• Use a combination of letters and numbers</li>
-                    <li>• Avoid using personal information</li>
+                    <li>• At least 8 characters long</li>
+                    <li>• Contains uppercase letter (A-Z)</li>
+                    <li>• Contains lowercase letter (a-z)</li>
+                    <li>• Contains number (0-9)</li>
+                    <li>• Contains special character (!@#$%^&*()_+-=[]{};':"\|,.&lt;&gt;/?))</li>
                   </ul>
                 </div>
               </div>
