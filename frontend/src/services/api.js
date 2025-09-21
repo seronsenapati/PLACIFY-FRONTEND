@@ -72,9 +72,16 @@ api.interceptors.response.use(
       // Handle specific status codes
       switch (error.response.status) {
         case 401:
-          // Handle unauthorized access
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+          // Skip automatic redirect for login requests
+          // The login page should handle 401 errors itself
+          if (originalRequest.url.includes('/auth/login')) {
+            // Let the login component handle this error
+            return Promise.reject(error);
+          } else {
+            // Handle unauthorized access for other requests
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+          }
           break;
         case 403:
           console.error('Access denied');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
+import Message from "../../components/Message";
 import {
   Briefcase as BriefcaseIcon,
   Calendar as CalendarIcon,
@@ -130,15 +131,11 @@ export default function StudentDashboard() {
 
         {/* Error Message */}
         {errorMsg && (
-          <div className="mb-6 p-4 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 flex items-center gap-3">
-            <AlertCircleIcon className="w-5 h-5 flex-shrink-0" />
-            <span className="flex-1">{errorMsg}</span>
-            <button onClick={() => setErrorMsg("")} className="flex-shrink-0 hover:opacity-70 transition-opacity">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <Message 
+            type="error" 
+            message={errorMsg} 
+            onClose={() => setErrorMsg("")} 
+          />
         )}
 
         {/* Summary Cards - Improved responsive grid */}

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { setRateLimitData, clearRateLimitData } from "../utils/auth";
+import Message from "../components/Message";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -303,89 +304,19 @@ const Register = () => {
           </div>
 
           {successMsg && (
-            <div className="mb-5 sm:mb-6 p-3 bg-green-500/20 text-green-300 text-sm rounded-md flex justify-between items-center">
-              <span>{successMsg}</span>
-              <button
-                onClick={() => setSuccessMsg("")}
-                className="text-green-300 hover:text-green-100"
-                aria-label="Dismiss success"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="success" 
+              message={successMsg} 
+              onClose={() => setSuccessMsg("")} 
+            />
           )}
 
           {errorMsg && (
-            <div className={`mb-5 sm:mb-6 p-3 sm:p-4 text-sm rounded-lg border flex items-start gap-2 sm:gap-3 ${
-              errorMsg.includes('Too many registration attempts') 
-                ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' 
-                : 'bg-red-500/20 text-red-300 border-red-500/30'
-            }`}>
-              <div className="flex-shrink-0 mt-0.5">
-                {errorMsg.includes('Too many registration attempts') ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                ) : errorMsg.includes('already exists') ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">
-                  {errorMsg.includes('Too many registration attempts') ? 'Rate Limited' : 
-                   errorMsg.includes('already exists') ? 'Account Exists' : 'Registration Failed'}
-                </p>
-                <p>{errorMsg}</p>
-                {errorMsg.includes('Too many registration attempts') && (
-                  <div className="mt-2 sm:mt-3 space-y-2">
-                    {retryCountdown > 0 && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>You can try again in {retryCountdown} seconds</span>
-                      </div>
-                    )}
-                    <p className="text-xs opacity-80">
-                      💡 Tip: Try using a different email/username or clear your browser cache.
-                    </p>
-                  </div>
-                )}
-                {errorMsg.includes('already exists') && (
-                  <p className="mt-2 text-xs opacity-80">
-                    💡 Try logging in instead or use a different email/username.
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setErrorMsg("")}
-                className="flex-shrink-0 hover:opacity-70 transition-opacity"
-                aria-label="Dismiss error"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="error" 
+              message={errorMsg} 
+              onClose={() => setErrorMsg("")} 
+            />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">

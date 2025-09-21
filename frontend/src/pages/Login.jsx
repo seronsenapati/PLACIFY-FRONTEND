@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../services/api";
 import { setAuthData, clearRateLimitData } from "../utils/auth";
+import Message from "../components/Message";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -85,43 +86,36 @@ const Login = () => {
     } catch (error) {
       console.error('Login error:', error);
       
-      let errorMessage = "Login failed. Please try again.";
+      // Prioritize backend error messages when available
+      let errorMessage = "";
       
-      // Handle different HTTP status codes
       if (error.response) {
-        switch (error.response.status) {
-          case 400:
-            errorMessage = "Invalid email or password. Please check your credentials.";
-            break;
-          case 401:
-            errorMessage = "Invalid credentials. Please check your email and password.";
-            break;
-          case 429:
-            // Bypass rate limiting for development - still show the error but don't enforce the limit
-            console.log("Rate limit hit, but bypassing for development");
-            errorMessage = "Too many login attempts. Rate limiting bypassed for development.";
-            // Don't set rate limited state
-            // setRateLimited(true);
-            // const retryAfter = error.response.headers['retry-after'] || 30;
-            // const countdownTime = Math.min(parseInt(retryAfter), 30);
-            // setRetryCountdown(countdownTime);
-            // setRetryCount(prev => prev + 1);
-            // setRateLimitData('login', countdownTime);
-            break;
-          case 500:
-            errorMessage = "Server error. Please try again later.";
-            break;
-          case 503:
-            errorMessage = "Service temporarily unavailable. Please try again later.";
-            break;
-          default:
-            errorMessage = `Login failed (${error.response.status}). Please try again.`;
-        }
-        
-        // Handle error response data if available
-        if (error.response.data) {
-          if (error.response.data.message) {
-            errorMessage = error.response.data.message;
+        // Check for backend error message first
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else {
+          // Fallback to our own messages based on status code
+          switch (error.response.status) {
+            case 400:
+              errorMessage = "Invalid email or password. Please check your credentials.";
+              break;
+            case 401:
+              // This is the most common error for wrong password
+              errorMessage = "Invalid email or password. Please check your credentials.";
+              break;
+            case 429:
+              // Bypass rate limiting for development - still show the error but don't enforce the limit
+              console.log("Rate limit hit, but bypassing for development");
+              errorMessage = "Too many login attempts. Rate limiting bypassed for development.";
+              break;
+            case 500:
+              errorMessage = "Server error. Please try again later.";
+              break;
+            case 503:
+              errorMessage = "Service temporarily unavailable. Please try again later.";
+              break;
+            default:
+              errorMessage = `Login failed (${error.response.status}). Please try again.`;
           }
         }
       } else if (error.request) {
@@ -134,7 +128,12 @@ const Login = () => {
         }
       } else {
         // Other errors
-        errorMessage = 'An unexpected error occurred. Please try again.';
+        errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+      }
+      
+      // Ensure we always have an error message
+      if (!errorMessage) {
+        errorMessage = "Login failed. Please try again.";
       }
       
       setErrorMsg(errorMessage);
@@ -177,108 +176,19 @@ const Login = () => {
           </div>
 
           {successMsg && (
-            <div className="mb-5 sm:mb-6 p-3 bg-green-500/20 text-green-300 text-sm rounded-md flex justify-between items-center">
-              <span>{successMsg}</span>
-              <button
-                onClick={() => setSuccessMsg("")} // FIXED
-                className="text-green-300 hover:text-green-100"
-                aria-label="Dismiss success"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="success" 
+              message={successMsg} 
+              onClose={() => setSuccessMsg("")} 
+            />
           )}
 
           {errorMsg && (
-            <div className="mb-5 sm:mb-6 p-3 bg-red-500/20 text-red-300 text-sm rounded-md flex justify-between items-center">
-              <div className="flex items-start gap-2">
-                {errorMsg.includes('Too many login attempts') ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">
-                  {errorMsg.includes('Too many login attempts') ? 'Rate Limited' : 'Login Failed'}
-                </p>
-                <p>{errorMsg}</p>
-                {errorMsg.includes('Too many login attempts') && (
-                  <div className="mt-2 sm:mt-3 space-y-2">
-                    {retryCountdown > 0 && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>You can try again in {retryCountdown} seconds</span>
-                      </div>
-                    )}
-                    <p className="text-xs opacity-80">
-                      💡 Tip: Clear your browser cache or try using incognito mode if this persists.
-                    </p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setErrorMsg("")}
-                className="text-red-300 hover:text-red-100 flex-shrink-0"
-                aria-label="Dismiss error"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="error" 
+              message={errorMsg} 
+              onClose={() => setErrorMsg("")} 
+            />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">

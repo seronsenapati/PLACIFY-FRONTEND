@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
+import Message from "../../components/Message";
 
 export default function StudentSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -121,34 +122,40 @@ export default function StudentSettings() {
   async function saveGeneral(e) {
     e.preventDefault();
     setSaving(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+    
     try {
       const formData = new FormData();
       formData.append("name", form.name);
       formData.append("username", form.username);
       formData.append("email", form.email);
-      if (form.profilePhoto) {
+      
+      // Only append profile photo if it's a new file
+      if (form.profilePhoto instanceof File) {
         formData.append("profilePhoto", form.profilePhoto);
       }
 
-      await api.patch("/settings/profile", formData, {
+      const response = await api.patch("/settings/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-        setSuccessMsg("Profile updated successfully!");
-        
-        // Update profile photo URL if a new photo was uploaded
-        if (form.profilePhoto) {
-          const res = await api.get("/settings/profile");
-          const data = res.data?.data || {};
-          setForm(prev => ({
-            ...prev,
-            profilePhoto: null,
-            profilePhotoUrl: data.profilePhoto || prev.profilePhotoUrl
-          }));
-        }
-      } catch (err) {
-        console.error("[save general]", err);
-        const errorMessage = err.response?.data?.message || "Failed to update profile";
-        setErrorMsg(errorMessage);
+      
+      setSuccessMsg("Profile updated successfully!");
+      
+      // Update form state with the response data
+      const data = response?.data?.data || {};
+      setForm(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        username: data.username || prev.username,
+        email: data.email || prev.email,
+        profilePhoto: null, // Clear the file object
+        profilePhotoUrl: data.profilePhoto || prev.profilePhotoUrl
+      }));
+    } catch (err) {
+      console.error("[save general]", err);
+      const errorMessage = err.response?.data?.message || "Failed to update profile";
+      setErrorMsg(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -273,38 +280,20 @@ export default function StudentSettings() {
 
         {/* Success Message */}
         {successMsg && (
-          <div className="mb-6 p-4 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="flex-1">{successMsg}</span>
-            <button
-              onClick={() => setSuccessMsg("")}
-              className="flex-shrink-0 hover:opacity-70 transition-opacity"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <Message 
+            type="success" 
+            message={successMsg} 
+            onClose={() => setSuccessMsg("")} 
+          />
         )}
 
         {/* Error Message */}
         {errorMsg && (
-          <div className="mb-6 p-4 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="flex-1">{errorMsg}</span>
-            <button
-              onClick={() => setErrorMsg("")}
-              className="flex-shrink-0 hover:opacity-70 transition-opacity"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <Message 
+            type="error" 
+            message={errorMsg} 
+            onClose={() => setErrorMsg("")} 
+          />
         )}
         {/* Enhanced Tabs - Made responsive for mobile */}
         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-white/5 rounded-lg border border-white/10 w-full">
@@ -794,7 +783,7 @@ export default function StudentSettings() {
                         <option value="America/New_York">Eastern Time</option>
                         <option value="America/Chicago">Central Time</option>
                         <option value="America/Denver">Mountain Time</option>
-                        <option value="America/Los_Angeles">Pacific Time</option>
+                        <option value="America/Los_Angleles">Pacific Time</option>
                         <option value="Europe/London">London</option>
                         <option value="Europe/Paris">Paris</option>
                         <option value="Asia/Tokyo">Tokyo</option>

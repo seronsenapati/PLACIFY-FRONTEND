@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
+import Message from "../../components/Message";
 import { getRole, getUserId } from "../../utils/auth";
 
 export default function CompanyProfile() {
@@ -12,11 +13,11 @@ export default function CompanyProfile() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [company, setCompany] = useState(null);
-  const [jobsCount, setJobsCount] = useState(0); // Add state for jobs count
+  const [jobsCount, setJobsCount] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(null); // For previewing selected logo
+  const [logoPreview, setLogoPreview] = useState(null);
   const logoInputRef = useRef(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -25,7 +26,7 @@ export default function CompanyProfile() {
     location: "",
     industry: "",
     size: "1-10",
-    employeeCount: "", // Keep as string to match form input
+    employeeCount: "",
     socialMedia: {
       linkedin: "",
       twitter: "",
@@ -74,31 +75,18 @@ export default function CompanyProfile() {
   if (role !== 'recruiter') {
     return (
       <div className="min-h-[calc(100vh-6rem)] flex justify-center items-center">
-        <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-6 max-w-md w-full mx-4">
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-xl font-bold text-white">Access Denied</h2>
-          </div>
-          <p className="text-gray-300 mb-4">
-            This page is only accessible to recruiters. Your current role is: <span className="font-bold">{role || 'unknown'}</span>
-          </p>
-          <div className="text-sm text-gray-400">
-            <p className="mb-2">If you believe this is an error:</p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Try logging out and logging back in</li>
-              <li>Contact an administrator to verify your account role</li>
-            </ol>
-          </div>
-          <div className="mt-6">
-            <a
-              href="/recruiter/dashboard"
-              className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              Return to Dashboard
-            </a>
-          </div>
+        <Message 
+          type="error" 
+          title="Access Denied"
+          message={`This page is only accessible to recruiters. Your current role is: ${role || 'unknown'}`}
+        />
+        <div className="mt-6">
+          <a
+            href="/recruiter/dashboard"
+            className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Return to Dashboard
+          </a>
         </div>
       </div>
     );
@@ -108,24 +96,18 @@ export default function CompanyProfile() {
   if (!userId) {
     return (
       <div className="min-h-[calc(100vh-6rem)] flex justify-center items-center">
-        <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-6 max-w-md w-full mx-4">
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-xl font-bold text-white">Authentication Error</h2>
-          </div>
-          <p className="text-gray-300 mb-4">
-            User ID not found. Please log in again.
-          </p>
-          <div className="mt-6">
-            <a
-              href="/login"
-              className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              Go to Login
-            </a>
-          </div>
+        <Message 
+          type="error" 
+          title="Authentication Error"
+          message="User ID not found. Please log in again."
+        />
+        <div className="mt-6">
+          <a
+            href="/login"
+            className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Go to Login
+          </a>
         </div>
       </div>
     );
@@ -271,36 +253,224 @@ export default function CompanyProfile() {
     }
   }
 
-  async function handleLogoUpload() {
-    if (!logoFile) {
-      setErrorMsg("Please select a logo file");
-      return;
-    }
+  async function handleLogoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const formData = new FormData();
-    formData.append("logo", logoFile);
-
-    try {
-      setUploadingLogo(true);
-      const res = await api.post(`/companies/${company._id}/logo`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
-      });
-
-      console.log("[handleLogoUpload] Logo uploaded successfully:", res.data);
-      setCompany(res.data.data);
-      setSuccessMsg("Company logo updated successfully!");
-    } catch (logoUploadError) {
-      console.error("[handleLogoUpload] Error uploading logo:", logoUploadError);
-      setErrorMsg("Failed to upload logo. Please try again.");
-    } finally {
-      setUploadingLogo(false);
-      setLogoFile(null);
-      setLogoPreview(null);
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setErrorMsg("Please upload a valid image file (JPG, PNG, or GIF)");
+      // Clear the file input
       if (logoInputRef.current) {
         logoInputRef.current.value = "";
       }
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg("File size must be less than 5MB");
+      // Clear the file input
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+      return;
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+
+    // Store the file temporarily if company doesn't exist yet
+    if (!company) {
+      setLogoFile(file);
+      setSuccessMsg("Logo selected! It will be uploaded after you create your company profile.");
+      return;
+    }
+
+    // If company exists, upload immediately
+    // Ensure company object has an _id before attempting upload
+    if (company && company._id) {
+      await uploadLogo(file);
+    } else {
+      setErrorMsg("Company information not available. Please try again.");
+      // Clear the file input
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+    }
+  }
+
+  // Separate function to handle actual logo upload
+  async function uploadLogo(file) {
+    // Ensure we have a valid company ID
+    if (!company || !company._id) {
+      setErrorMsg("Company information not available. Please try again.");
+      setUploadingLogo(false);
+      return;
+    }
+
+    // Log file information for debugging
+    console.log("[uploadLogo] File info:", {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
+    const fd = new FormData();
+    fd.append("logo", file);
+
+    console.log("[uploadLogo] FormData entries:");
+    for (let [key, value] of fd.entries()) {
+      console.log(key, value);
+    }
+
+    console.log("[uploadLogo] Uploading logo file:", file);
+    console.log("[uploadLogo] Company ID:", company._id);
+
+    setUploadingLogo(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      // The api service will now handle FormData properly
+      const res = await api.patch(`/companies/${company._id}`, fd);
+
+      console.log("[uploadLogo] Success response:", res.data);
+      setCompany(res.data.data);
+      setLogoFile(null); // Clear temporary file
+      setLogoPreview(null); // Clear preview
+      // Clear the file input
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+      setSuccessMsg("Company logo updated successfully!");
+    } catch (err) {
+      console.error("[upload company logo]", err);
+      console.log("[uploadLogo] Error response:", err.response);
+
+      if (err.response?.status === 403) {
+        setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
+      } else if (err.response?.status === 401) {
+        setErrorMsg("Authentication required. Please log in again.");
+      } else if (err.response?.status === 400) {
+        // Handle specific validation errors for logo upload
+        let errorMessage = "Failed to upload company logo";
+        if (err.response?.data?.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response?.data?.errors) {
+          // Handle validation errors
+          const errors = err.response.data.errors;
+          if (Array.isArray(errors) && errors.length > 0) {
+            errorMessage = errors.map(e => e.msg || e.message || JSON.stringify(e)).join(", ");
+          } else if (typeof errors === 'object') {
+            errorMessage = Object.values(errors).join(", ");
+          }
+        }
+        setErrorMsg(errorMessage);
+      } else {
+        const errorMessage = err.response?.data?.message || "Failed to upload company logo";
+        setErrorMsg(errorMessage);
+      }
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
+  function handleCancel() {
+    // Reset form to original values
+    if (company) {
+      setFormData({
+        name: company.name || "",
+        desc: company.desc || "",
+        website: company.website || "",
+        location: company.location || "",
+        industry: company.industry || "",
+        size: company.size || "1-10",
+        employeeCount: company.employeeCount || "",
+        socialMedia: {
+          linkedin: company.socialMedia?.linkedin || "",
+          twitter: company.socialMedia?.twitter || "",
+          facebook: company.socialMedia?.facebook || "",
+          instagram: company.socialMedia?.instagram || ""
+        }
+      });
+    } else {
+      // Reset to empty form
+      setFormData({
+        name: "",
+        desc: "",
+        website: "",
+        location: "",
+        industry: "",
+        size: "1-10",
+        employeeCount: "",
+        socialMedia: {
+          linkedin: "",
+          twitter: "",
+          facebook: "",
+          instagram: ""
+        }
+      });
+    }
+    // Clear logo file and input when canceling
+    setLogoFile(null);
+    setLogoPreview(null);
+    setIsEditing(false);
+    setShowForm(false);
+  }
+
+  function handleEdit() {
+    setIsEditing(true);
+    setShowForm(true);
+  }
+
+  async function handleDeleteCompany() {
+    if (!company) return;
+
+    if (!window.confirm("Are you sure you want to delete your company profile? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      await api.delete(`/companies/${company._id}`);
+      setCompany(null);
+      setFormData({
+        name: "",
+        desc: "",
+        website: "",
+        location: "",
+        industry: "",
+        size: "1-10",
+        employeeCount: "",
+        socialMedia: {
+          linkedin: "",
+          twitter: "",
+          facebook: "",
+          instagram: ""
+        }
+      });
+      setSuccessMsg("Company profile deleted successfully!");
+    } catch (err) {
+      console.error("[delete company profile]", err);
+
+      if (err.response?.status === 403) {
+        setErrorMsg("Access denied. You don't have permission to delete this company.");
+      } else if (err.response?.status === 401) {
+        setErrorMsg("Authentication required. Please log in again.");
+      } else {
+        const errorMessage = err.response?.data?.message || "Failed to delete company profile";
+        setErrorMsg(errorMessage);
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -718,9 +888,6 @@ export default function CompanyProfile() {
         // More detailed 500 error handling
         let errorMessage = "Failed to save company profile due to a server error. Please try again later.";
 
-        // Log the full error response for debugging
-        console.log("Full error response:", err.response);
-
         // Check for specific error information in different parts of the response
         if (err.response?.data?.message) {
           errorMessage = `Server error: ${err.response.data.message}`;
@@ -777,904 +944,6 @@ export default function CompanyProfile() {
     }
   }
 
-  // Modified logo upload function
-  async function handleLogoUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!validTypes.includes(file.type)) {
-      setErrorMsg("Please upload a valid image file (JPG, PNG, or GIF)");
-      // Clear the file input
-      if (logoInputRef.current) {
-        logoInputRef.current.value = "";
-      }
-      return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg("File size must be less than 5MB");
-      // Clear the file input
-      if (logoInputRef.current) {
-        logoInputRef.current.value = "";
-      }
-      return;
-    }
-
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-    setLogoPreview(previewUrl);
-
-    // Store the file temporarily if company doesn't exist yet
-    if (!company) {
-      setLogoFile(file);
-      setSuccessMsg("Logo selected! It will be uploaded after you create your company profile.");
-      return;
-    }
-
-    // If company exists, upload immediately
-    // Ensure company object has an _id before attempting upload
-    if (company && company._id) {
-      await uploadLogo(file);
-    } else {
-      setErrorMsg("Company information not available. Please try again.");
-      // Clear the file input
-      if (logoInputRef.current) {
-        logoInputRef.current.value = "";
-      }
-    }
-  }
-
-  function handleCancel() {
-    setIsEditing(false);
-    setShowForm(false);
-    setLogoFile(null);
-    setLogoPreview(null);
-  }
-
-  function handleEdit() {
-    setIsEditing(true);
-    setShowForm(true);
-  }
-
-  function handleDelete() {
-    if (window.confirm("Are you sure you want to delete this company profile? This action cannot be undone.")) {
-      deleteCompany(company._id)
-        .then(() => {
-          setCompany(null);
-          setSuccessMsg("Company profile deleted successfully.");
-        })
-        .catch(err => {
-          console.error("[delete company profile]", err);
-          setErrorMsg("Failed to delete company profile. Please try again.");
-        });
-    }
-  }
-
-  // Separate function to handle actual logo upload
-  async function uploadLogo(file) {
-    // Ensure we have a valid company ID
-    if (!company || !company._id) {
-      setErrorMsg("Company information not available. Please try again.");
-      setUploadingLogo(false);
-      return;
-    }
-
-    // Log file information for debugging
-    console.log("[uploadLogo] File info:", {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
-
-    const fd = new FormData();
-    fd.append("logo", file);
-
-    console.log("[uploadLogo] FormData entries:");
-    for (let [key, value] of fd.entries()) {
-      console.log(key, value);
-    }
-
-    console.log("[uploadLogo] Uploading logo file:", file);
-    console.log("[uploadLogo] Company ID:", company._id);
-
-    setUploadingLogo(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    try {
-      // The api service will now handle FormData properly
-      const res = await api.patch(`/companies/${company._id}`, fd);
-
-      console.log("[uploadLogo] Success response:", res.data);
-      setCompany(res.data.data);
-      setLogoFile(null); // Clear temporary file
-      setLogoPreview(null); // Clear preview
-      // Clear the file input
-      if (logoInputRef.current) {
-        logoInputRef.current.value = "";
-      }
-      setSuccessMsg("Company logo updated successfully!");
-    } catch (err) {
-      console.error("[upload company logo]", err);
-      console.log("[uploadLogo] Error response:", err.response);
-
-      if (err.response?.status === 403) {
-        setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
-      } else if (err.response?.status === 401) {
-        setErrorMsg("Authentication required. Please log in again.");
-      } else if (err.response?.status === 400) {
-        // Handle specific validation errors for logo upload
-        let errorMessage = "Failed to upload company logo";
-        if (err.response?.data?.message) {
-          errorMessage = err.response.data.message;
-        } else if (err.response?.data?.error) {
-          errorMessage = err.response.data.error;
-        } else if (err.response?.data?.errors) {
-          // Handle validation errors
-          const errors = err.response.data.errors;
-          if (Array.isArray(errors) && errors.length > 0) {
-            errorMessage = errors.map(e => e.msg || e.message || JSON.stringify(e)).join(", ");
-          } else if (typeof errors === 'object') {
-            errorMessage = Object.values(errors).join(", ");
-          }
-        }
-        setErrorMsg(errorMessage);
-      } else {
-        const errorMessage = err.response?.data?.message || "Failed to upload company logo";
-        setErrorMsg(errorMessage);
-      }
-    } finally {
-      setUploadingLogo(false);
-    }
-  }
-
-  async function handleDeleteCompany() {
-    if (!company) return;
-
-    if (!window.confirm("Are you sure you want to delete your company profile? This action cannot be undone.")) {
-      return;
-    }
-
-    setDeleting(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    try {
-      await api.delete(`/companies/${company._id}`);
-      setCompany(null);
-      setFormData({
-        name: "",
-        desc: "",
-        website: "",
-        location: "",
-        industry: "",
-        size: "1-10",
-        employeeCount: "",
-        socialMedia: {
-          linkedin: "",
-          twitter: "",
-          facebook: "",
-          instagram: ""
-        }
-      });
-      setSuccessMsg("Company profile deleted successfully!");
-    } catch (err) {
-      console.error("[delete company profile]", err);
-
-      if (err.response?.status === 403) {
-        setErrorMsg("Access denied. You don't have permission to delete this company.");
-      } else if (err.response?.status === 401) {
-        setErrorMsg("Authentication required. Please log in again.");
-      } else {
-        const errorMessage = err.response?.data?.message || "Failed to delete company profile";
-        setErrorMsg(errorMessage);
-      }
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  function handleCancel() {
-    // Reset form to original values
-    if (company) {
-      setFormData({
-        name: company.name || "",
-        desc: company.desc || "",
-        website: company.website || "",
-        location: company.location || "",
-        industry: company.industry || "",
-        size: company.size || "1-10",
-        employeeCount: company.employeeCount || "",
-        socialMedia: {
-          linkedin: company.socialMedia?.linkedin || "",
-          twitter: company.socialMedia?.twitter || "",
-          facebook: company.socialMedia?.facebook || "",
-          instagram: company.socialMedia?.instagram || ""
-        }
-      });
-    } else {
-      // Reset to empty form
-      setFormData({
-        name: "",
-        desc: "",
-        website: "",
-        location: "",
-        industry: "",
-        size: "1-10",
-        employeeCount: "",
-        socialMedia: {
-          linkedin: "",
-          twitter: "",
-          facebook: "",
-          instagram: ""
-        }
-      });
-    }
-    // Clear logo file and input when canceling
-    setLogoFile(null);
-    setLogoPreview(null);
-    if (logoInputRef.current) {
-      logoInputRef.current.value = "";
-    }
-    setIsEditing(false);
-    setShowForm(false);
-  }
-
-  if (loading) {
-    return (
-      <LoadingScreen
-        title="Loading Company Profile"
-        subtitle="Please wait while we load your company information..."
-        steps={[
-          { text: "Fetching company data", color: "blue" },
-          { text: "Loading profile details", color: "purple" },
-          { text: "Preparing dashboard", color: "green" }
-        ]}
-      />
-    );
-  }
-
-  // If recruiter has a company and is not editing, show company card
-  if (company && !showForm && !isEditing) {
-    return (
-      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
-        <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold">Company Profile</h1>
-                <p className="text-gray-400 mt-1">
-                  Manage your company information
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setIsEditing(true);
-                    setShowForm(true);
-                  }}
-                  disabled={saving || uploadingLogo || deleting}
-                  className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
-                >
-                  {saving || uploadingLogo || deleting ? (
-                    <MiniLoader />
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  )}
-                  Edit
-                </button>
-
-                <button
-                  onClick={handleDeleteCompany}
-                  disabled={deleting || saving || uploadingLogo}
-                  className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
-                >
-                  {deleting ? (
-                    <MiniLoader />
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1v3M4 7h16" />
-                    </svg>
-                  )}
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            {/* Messages */}
-            {(errorMsg || successMsg) && (
-              <div className={`p-4 rounded-lg ${errorMsg ? 'bg-red-500/20 border border-red-500/30' : 'bg-green-500/20 border border-green-500/30'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {errorMsg ? (
-                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )}
-                    <span className={errorMsg ? 'text-red-300' : 'text-green-300'}>
-                      {errorMsg || successMsg}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => { setErrorMsg(""); setSuccessMsg(""); }}
-                    className="hover:opacity-70 transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Company Card */}
-            <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-                <h2 className="text-xl font-semibold">Company Information</h2>
-              </div>
-
-              <div className="p-6">
-                <div className="flex flex-col sm:flex-row items-start gap-6">
-                  <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
-                    {company?.logo ? (
-                      <img
-                        src={company.logo}
-                        alt="Company Logo"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <svg
-                        className="w-12 h-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-white">{company.name}</h3>
-                    <p className="text-gray-300 mt-1">{company.location || "Location not specified"}</p>
-
-                    <div className="mt-4">
-                      <a
-                        href={company.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                      >
-                        Visit Website
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-white/10">
-                  <p className="text-gray-300">{company.desc || "No description provided"}</p>
-
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-400">Industry</p>
-                      <p className="text-white">{company.industry || "Not specified"}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-400">Company Size</p>
-                      <p className="text-white">{company.size ? `${company.size} employees` : "Not specified"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Company Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Profile Completeness</p>
-                    <p className="text-xl font-bold">{company.profileCompleteness || 0}%</p>
-                  </div>
-                </div>
-                <div className="mt-4 w-full bg-white/10 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full"
-                    style={{ width: `${company.profileCompleteness || 0}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.922-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Average Rating</p>
-                    <p className="text-xl font-bold">{company.averageRating || 0}/5</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <svg
-                      key={star}
-                      className={`w-4 h-4 ${star <= (company.averageRating || 0) ? 'text-amber-400' : 'text-gray-600'}`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <span className="text-sm text-gray-400 ml-2">({company.reviewCount || 0} reviews)</span>
-                </div>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7h.01M9 7h.01M8 11h8" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Jobs Posted</p>
-                    <p className="text-xl font-bold">{jobsCount}</p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <a
-                    href="/recruiter/jobs"
-                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                  >
-                    Manage jobs
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If recruiter doesn't have a company or is creating/editing, show the form
-  return (
-    <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
-      <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Company Profile</h1>
-              <p className="text-gray-400 mt-1">
-                {company
-                  ? "Edit your company information"
-                  : "Create your company profile to start posting jobs"}
-              </p>
-            </div>
-
-            {(company && !showForm) && (
-              <button
-                onClick={() => {
-                  setIsEditing(true);
-                  setShowForm(true);
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Edit Profile
-              </button>
-            )}
-          </div>
-
-          {/* Messages */}
-          {(errorMsg || successMsg) && (
-            <div className={`p-4 rounded-lg ${errorMsg ? 'bg-red-500/20 border border-red-500/30' : 'bg-green-500/20 border border-green-500/30'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {errorMsg ? (
-                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                  <span className={errorMsg ? 'text-red-300' : 'text-green-300'}>
-                    {errorMsg || successMsg}
-                  </span>
-                </div>
-                <button
-                  onClick={() => { setErrorMsg(""); setSuccessMsg(""); }}
-                  className="hover:opacity-70 transition-opacity"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Show register button if no company exists and not showing form */}
-          {!company && !showForm && (
-            <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-8 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">No Company Profile Found</h3>
-              <p className="text-gray-400 mb-6">
-                Create your company profile to start posting jobs and connecting with talented candidates.
-              </p>
-              <button
-                onClick={() => setShowForm(true)}
-                disabled={loading}
-                className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <MiniLoader />
-                    Loading...
-                  </div>
-                ) : (
-                  "Register Company"
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Company Profile Form */}
-          {(showForm || company) && (
-            <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden">
-              <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-                <h2 className="text-xl font-semibold">
-                  {company ? "Edit Company Profile" : "Create Company Profile"}
-                </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  {company
-                    ? "Update your company details below"
-                    : "Fill in your company information to get started"}
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                {/* Company Logo Section - Always show for recruiters */}
-                <div className="border-b border-white/10 pb-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Company Logo</h3>
-                  <div className="flex flex-col sm:flex-row items-start gap-6">
-                    <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30">
-                      {/* Show preview if available, otherwise show existing logo or default icon */}
-                      {logoPreview || company?.logo ? (
-                        <img
-                          src={logoPreview || company.logo}
-                          alt="Company Logo Preview"
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <svg
-                          className="w-12 h-12 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        disabled={uploadingLogo}
-                        className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-white hover:file:bg-white/20 file:font-medium transition-all file:cursor-pointer disabled:opacity-50"
-                      />
-                      <p className="text-xs text-gray-400 mt-2">
-                        Upload your company logo. JPG, PNG or GIF (max 5MB)
-                      </p>
-                      {uploadingLogo && (
-                        <div className="flex items-center gap-2 mt-2 text-blue-400">
-                          <MiniLoader />
-                          <span>Uploading logo...</span>
-                        </div>
-                      )}
-                      {logoFile && !company && (
-                        <p className="text-xs text-green-400 mt-2">
-                          Logo selected: {logoFile.name}
-                        </p>
-                      )}
-                      {!company && !logoFile && (
-                        <p className="text-xs text-amber-400 mt-2">
-                          Note: You need to create your company profile first. Logo will be uploaded after creation.
-                        </p>
-                      )}
-                      {company && !company.logo && !logoFile && !logoPreview && (
-                        <p className="text-xs text-amber-400 mt-2">
-                          No logo uploaded yet. Select an image to upload.
-                        </p>
-                      )}
-                      {saving && (
-                        <div className="flex items-center gap-2 mt-2 text-blue-400">
-                          <MiniLoader />
-                          <span>Saving profile...</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                      Company Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Enter company name"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-2">
-                      Website *
-                    </label>
-                    <input
-                      type="url"
-                      id="website"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="https://example.com"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label htmlFor="desc" className="block text-sm font-medium text-gray-300 mb-2">
-                      Description *
-                    </label>
-                    <textarea
-                      id="desc"
-                      name="desc"
-                      value={formData.desc}
-                      onChange={handleInputChange}
-                      required
-                      rows={4}
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Describe your company, mission, and values"
-                    />
-                  </div>
-                </div>
-
-                {/* Additional Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-2">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="City, Country"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="industry" className="block text-sm font-medium text-gray-300 mb-2">
-                      Industry
-                    </label>
-                    <select
-                      id="industry"
-                      name="industry"
-                      value={formData.industry}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="" className="bg-neutral-800 text-white">Select industry</option>
-                      {industryOptions.map(industry => (
-                        <option key={industry} value={industry} className="bg-neutral-800 text-white">{industry}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="size" className="block text-sm font-medium text-gray-300 mb-2">
-                      Company Size
-                    </label>
-                    <select
-                      id="size"
-                      name="size"
-                      value={formData.size}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="" className="bg-neutral-800 text-white">Select company size</option>
-                      {sizeOptions.map(size => (
-                        <option key={size} value={size} className="bg-neutral-800 text-white">{size} employees</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="employeeCount" className="block text-sm font-medium text-gray-300 mb-2">
-                      Employee Count
-                    </label>
-                    <input
-                      type="number"
-                      id="employeeCount"
-                      name="employeeCount"
-                      value={formData.employeeCount}
-                      onChange={handleInputChange}
-                      min="0"
-                      className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Number of employees"
-                    />
-                  </div>
-                </div>
-
-                {/* Social Media Links */}
-                <div className="border-t border-white/10 pt-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Social Media Links</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="socialMedia.linkedin" className="block text-sm font-medium text-gray-300 mb-2">
-                        LinkedIn
-                      </label>
-                      <input
-                        type="url"
-                        id="socialMedia.linkedin"
-                        name="socialMedia.linkedin"
-                        value={formData.socialMedia.linkedin}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="https://linkedin.com/company/example"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="socialMedia.twitter" className="block text-sm font-medium text-gray-300 mb-2">
-                        Twitter
-                      </label>
-                      <input
-                        type="url"
-                        id="socialMedia.twitter"
-                        name="socialMedia.twitter"
-                        value={formData.socialMedia.twitter}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="https://twitter.com/example"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="socialMedia.facebook" className="block text-sm font-medium text-gray-300 mb-2">
-                        Facebook
-                      </label>
-                      <input
-                        type="url"
-                        id="socialMedia.facebook"
-                        name="socialMedia.facebook"
-                        value={formData.socialMedia.facebook}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="https://facebook.com/example"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="socialMedia.instagram" className="block text-sm font-medium text-gray-300 mb-2">
-                        Instagram
-                      </label>
-                      <input
-                        type="url"
-                        id="socialMedia.instagram"
-                        name="socialMedia.instagram"
-                        value={formData.socialMedia.instagram}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="https://instagram.com/example"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Form Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
-                  <button
-                    type="submit"
-                    disabled={saving || uploadingLogo || deleting}
-                    className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {saving || uploadingLogo ? (
-                      <>
-                        <MiniLoader />
-                        {company ? "Updating..." : "Creating..."}
-                      </>
-                    ) : (
-                      <>{company ? "Update Profile" : "Create Profile"}</>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={saving || uploadingLogo || deleting}
-                    className="py-2.5 px-4 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {saving || uploadingLogo || deleting ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <MiniLoader />
-                        Canceling...
-                      </div>
-                    ) : (
-                      "Cancel"
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   // Helper function to format validation errors
   function formatValidationErrors(errors) {
     if (!errors) return null;
@@ -1708,4 +977,650 @@ export default function CompanyProfile() {
 
     return null;
   }
+
+  // If recruiter has a company and is not editing, show the company profile
+  if (company && !isEditing) {
+    return (
+      <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
+        <div className="w-full max-w-4xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Company Profile</h1>
+                <p className="text-gray-400 mt-1">View and manage your company information</p>
+              </div>
+
+              <button
+                onClick={handleEdit}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Profile
+              </button>
+            </div>
+
+            {/* Messages */}
+            {errorMsg && (
+              <Message 
+                type="error" 
+                message={errorMsg} 
+                onClose={() => setErrorMsg("")} 
+              />
+            )}
+
+            {successMsg && (
+              <Message 
+                type="success" 
+                message={successMsg} 
+                onClose={() => setSuccessMsg("")} 
+              />
+            )}
+
+            {/* Company Profile Card */}
+            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Company Logo */}
+                <div className="flex-shrink-0">
+                  <div className="w-24 h-24 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden">
+                    {company.logo ? (
+                      <img 
+                        src={company.logo} 
+                        alt={company.name} 
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.parentElement.innerHTML = '<div className="w-full h-full bg-gray-600 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg></div>';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Company Info */}
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold">{company.name}</h2>
+                  
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-400">Website</p>
+                      <p className="text-blue-400 hover:text-blue-300">
+                        <a href={company.website} target="_blank" rel="noopener noreferrer">
+                          {company.website}
+                        </a>
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-400">Jobs Posted</p>
+                      <p className="font-medium">{jobsCount} jobs</p>
+                    </div>
+                    
+                    {company.location && (
+                      <div>
+                        <p className="text-sm text-gray-400">Location</p>
+                        <p>{company.location}</p>
+                      </div>
+                    )}
+                    
+                    {company.industry && (
+                      <div>
+                        <p className="text-sm text-gray-400">Industry</p>
+                        <p>{company.industry}</p>
+                      </div>
+                    )}
+                    
+                    {company.size && (
+                      <div>
+                        <p className="text-sm text-gray-400">Company Size</p>
+                        <p>{company.size}</p>
+                      </div>
+                    )}
+                    
+                    {company.employeeCount && (
+                      <div>
+                        <p className="text-sm text-gray-400">Employee Count</p>
+                        <p>{company.employeeCount}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              {company.desc && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-2">About</h3>
+                  <p className="text-gray-300">{company.desc}</p>
+                </div>
+              )}
+
+              {/* Social Media */}
+              {(company.socialMedia?.linkedin || company.socialMedia?.twitter || 
+                company.socialMedia?.facebook || company.socialMedia?.instagram) && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-3">Social Media</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {company.socialMedia?.linkedin && (
+                      <a 
+                        href={company.socialMedia.linkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                        </svg>
+                        LinkedIn
+                      </a>
+                    )}
+                    
+                    {company.socialMedia?.twitter && (
+                      <a 
+                        href={company.socialMedia.twitter} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                        </svg>
+                        Twitter
+                      </a>
+                    )}
+                    
+                    {company.socialMedia?.facebook && (
+                      <a 
+                        href={company.socialMedia.facebook} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+                        </svg>
+                        Facebook
+                      </a>
+                    )}
+                    
+                    {company.socialMedia?.instagram && (
+                      <a 
+                        href={company.socialMedia.instagram} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        </svg>
+                        Instagram
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button
+                  onClick={handleEdit}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Profile
+                </button>
+                
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <MiniLoader />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Change Logo
+                    </>
+                  )}
+                </button>
+                
+                <input
+                  type="file"
+                  ref={logoInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                <button
+                  onClick={handleDeleteCompany}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <MiniLoader />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete Company
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If recruiter doesn't have a company or is editing, show the form
+  return (
+    <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start">
+      <div className="w-full max-w-4xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
+        <div className="space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold">
+              {company ? "Edit Company Profile" : "Create Company Profile"}
+            </h1>
+            <p className="text-gray-400 mt-1">
+              {company 
+                ? "Update your company information" 
+                : "Set up your company profile to start posting jobs"}
+            </p>
+          </div>
+
+          {/* Messages */}
+          {errorMsg && (
+            <Message 
+              type="error" 
+              message={errorMsg} 
+              onClose={() => setErrorMsg("")} 
+            />
+          )}
+
+          {successMsg && (
+            <Message 
+              type="success" 
+              message={successMsg} 
+              onClose={() => setSuccessMsg("")} 
+            />
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center items-center h-64">
+              <LoadingScreen />
+            </div>
+          )}
+
+          {/* Form */}
+          {!loading && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Company Logo Upload */}
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <h2 className="text-xl font-semibold mb-4">Company Logo</h2>
+                
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* Logo Preview */}
+                  <div className="flex-shrink-0">
+                    <div className="w-24 h-24 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden">
+                      {logoPreview || company?.logo ? (
+                        <img 
+                          src={logoPreview || company?.logo} 
+                          alt="Company Logo Preview" 
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        {uploadingLogo ? (
+                          <>
+                            <MiniLoader />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {company ? "Change Logo" : "Upload Logo"}
+                          </>
+                        )}
+                      </button>
+                      
+                      <input
+                        type="file"
+                        ref={logoInputRef}
+                        onChange={handleLogoUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      
+                      <p className="text-sm text-gray-400">
+                        JPG, PNG, or GIF (max 5MB)
+                      </p>
+                    </div>
+                    
+                    {logoPreview && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLogoPreview(null);
+                            setLogoFile(null);
+                            if (logoInputRef.current) {
+                              logoInputRef.current.value = "";
+                            }
+                          }}
+                          className="text-sm text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Information */}
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <h2 className="text-xl font-semibold mb-4">Company Information</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Company Name */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="Enter company name"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Website */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-1">
+                      Website *
+                    </label>
+                    <input
+                      type="url"
+                      id="website"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="https://example.com"
+                      required
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Include https:// or http:// in the URL
+                    </p>
+                  </div>
+                  
+                  {/* Description */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="desc" className="block text-sm font-medium text-gray-300 mb-1">
+                      Description *
+                    </label>
+                    <textarea
+                      id="desc"
+                      name="desc"
+                      value={formData.desc}
+                      onChange={handleInputChange}
+                      rows={4}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="Describe your company..."
+                      required
+                    />
+                    <div className="flex justify-between mt-1">
+                      <p className="text-xs text-gray-400">
+                        Brief description of your company
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {formData.desc.length}/1000
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Location */}
+                  <div>
+                    <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-1">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  
+                  {/* Industry */}
+                  <div>
+                    <label htmlFor="industry" className="block text-sm font-medium text-gray-300 mb-1">
+                      Industry
+                    </label>
+                    <select
+                      id="industry"
+                      name="industry"
+                      value={formData.industry}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                    >
+                      <option value="">Select Industry</option>
+                      {industryOptions.map(industry => (
+                        <option key={industry} value={industry}>
+                          {industry}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Company Size */}
+                  <div>
+                    <label htmlFor="size" className="block text-sm font-medium text-gray-300 mb-1">
+                      Company Size
+                    </label>
+                    <select
+                      id="size"
+                      name="size"
+                      value={formData.size}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                    >
+                      <option value="1-10">1-10 employees</option>
+                      <option value="11-50">11-50 employees</option>
+                      <option value="51-200">51-200 employees</option>
+                      <option value="201-500">201-500 employees</option>
+                      <option value="501-1000">501-1000 employees</option>
+                      <option value="1000+">1000+ employees</option>
+                    </select>
+                  </div>
+                  
+                  {/* Employee Count */}
+                  <div>
+                    <label htmlFor="employeeCount" className="block text-sm font-medium text-gray-300 mb-1">
+                      Employee Count
+                    </label>
+                    <input
+                      type="number"
+                      id="employeeCount"
+                      name="employeeCount"
+                      value={formData.employeeCount}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="Number of employees"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Media */}
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <h2 className="text-xl font-semibold mb-4">Social Media</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* LinkedIn */}
+                  <div>
+                    <label htmlFor="socialMedia.linkedin" className="block text-sm font-medium text-gray-300 mb-1">
+                      LinkedIn
+                    </label>
+                    <input
+                      type="url"
+                      id="socialMedia.linkedin"
+                      name="socialMedia.linkedin"
+                      value={formData.socialMedia.linkedin}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="https://linkedin.com/company/..."
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Include https:// in the URL
+                    </p>
+                  </div>
+                  
+                  {/* Twitter */}
+                  <div>
+                    <label htmlFor="socialMedia.twitter" className="block text-sm font-medium text-gray-300 mb-1">
+                      Twitter
+                    </label>
+                    <input
+                      type="url"
+                      id="socialMedia.twitter"
+                      name="socialMedia.twitter"
+                      value={formData.socialMedia.twitter}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="https://twitter.com/..."
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Include https:// in the URL
+                    </p>
+                  </div>
+                  
+                  {/* Facebook */}
+                  <div>
+                    <label htmlFor="socialMedia.facebook" className="block text-sm font-medium text-gray-300 mb-1">
+                      Facebook
+                    </label>
+                    <input
+                      type="url"
+                      id="socialMedia.facebook"
+                      name="socialMedia.facebook"
+                      value={formData.socialMedia.facebook}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="https://facebook.com/..."
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Include https:// in the URL
+                    </p>
+                  </div>
+                  
+                  {/* Instagram */}
+                  <div>
+                    <label htmlFor="socialMedia.instagram" className="block text-sm font-medium text-gray-300 mb-1">
+                      Instagram
+                    </label>
+                    <input
+                      type="url"
+                      id="socialMedia.instagram"
+                      name="socialMedia.instagram"
+                      value={formData.socialMedia.instagram}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                      placeholder="https://instagram.com/..."
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Include https:// in the URL
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <MiniLoader />
+                      {company ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {company ? "Update Company" : "Create Company"}
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

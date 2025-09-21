@@ -3,6 +3,7 @@
   import api from "../../services/api";
   import LoadingScreen from "../../components/LoadingScreen";
   import MiniLoader from "../../components/MiniLoader";
+  import Message from "../../components/Message";
 
   export default function StudentProfile() {
     const [loading, setLoading] = useState(true);
@@ -226,11 +227,13 @@
                 profilePhotoUrl: updated.profilePhoto,
                 profilePhoto: null,
               }));
+              setSuccessMessage("Profile photo uploaded successfully!");
             }
           } catch (photoError) {
             console.error("Profile photo upload error", photoError);
-            setErrorMessage("Failed to upload profile photo. Please try again.");
-            // Continue with the rest of the save even if photo upload fails
+            setErrorMessage(photoError.response?.data?.message || "Failed to upload profile photo. Please try again.");
+            setSaving(false);
+            return;
           }
         }
 
@@ -363,7 +366,7 @@
           err.response?.data?.message || err.message
         );
         setErrorMessage(
-          `Failed to save profile: ${err.response?.data?.message || err.message}`
+          err.response?.data?.message || `Failed to save profile: ${err.message}`
         );
       } finally {
         setSaving(false);
@@ -766,43 +769,21 @@
             </div>
           </div>
 
-          {/* Success and Error Messages - Improved positioning and styling */}
+          {/* Success and Error Messages */}
           {successMessage && (
-            <div className="mb-6 p-4 rounded-lg bg-green-900/30 border border-green-500/50 text-green-200 flex items-start gap-3 animate-fade-in">
-              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div className="flex-1">
-                <span className="font-medium">Success:</span> {successMessage}
-              </div>
-              <button 
-                onClick={() => setSuccessMessage("")}
-                className="ml-auto text-green-300 hover:text-white transition-colors flex-shrink-0"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="success" 
+              message={successMessage} 
+              onClose={() => setSuccessMessage("")} 
+            />
           )}
           
           {errorMessage && (
-            <div className="mb-6 p-4 rounded-lg bg-red-900/30 border border-red-500/50 text-red-200 flex items-start gap-3 animate-fade-in">
-              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <span className="font-medium">Error:</span> {errorMessage}
-              </div>
-              <button 
-                onClick={() => setErrorMessage("")}
-                className="ml-auto text-red-300 hover:text-white transition-colors flex-shrink-0"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <Message 
+              type="error" 
+              message={errorMessage} 
+              onClose={() => setErrorMessage("")} 
+            />
           )}
 
           <form onSubmit={handleSave} className="space-y-8">
