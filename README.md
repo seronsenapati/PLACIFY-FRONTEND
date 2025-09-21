@@ -1,9 +1,10 @@
-# PLACIFY - Your Career, Our Mission.
+# PLACIFY - Modern Job Portal
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-blue)](https://placify-app.vercel.app/)
-[![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5-green)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-blue)](https://tailwindcss.com/)
+[![React](https://img.shields.io/badge/Frontend-React-blue)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Build-Vite-green)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS-38B2AC)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
 
 A modern, responsive job portal application built with React, Vite, and Tailwind CSS. PLACIFY connects students with career opportunities and provides recruiters with tools to manage job postings and applications.
 
@@ -46,20 +47,28 @@ Check out the live application at: [https://placify-app.vercel.app/](https://pla
 ## 📁 Project Structure
 
 ```
-src/
-├── components/        # Reusable UI components
-├── layouts/           # Page layouts (Dashboard, Public)
-├── pages/             # Page components organized by user role
-│   ├── admin/         # Admin-specific pages
-│   ├── recruiter/     # Recruiter-specific pages
-│   ├── student/       # Student-specific pages
-│   └── shared/        # Public pages (Landing, Login, etc.)
-├── routes/            # Routing configuration
-├── services/          # API service layer
-├── utils/             # Utility functions
-├── App.jsx            # Main App component
-├── main.jsx           # Entry point
-└── index.css          # Global styles
+frontend/
+├── src/
+│   ├── components/        # Reusable UI components
+│   ├── layouts/           # Page layouts (Dashboard, Public)
+│   ├── pages/             # Page components organized by user role
+│   │   ├── admin/         # Admin-specific pages
+│   │   ├── recruiter/     # Recruiter-specific pages
+│   │   ├── student/       # Student-specific pages
+│   │   └── shared/        # Public pages (Landing, Login, etc.)
+│   ├── routes/            # Routing configuration
+│   ├── services/          # API service layer
+│   ├── utils/             # Utility functions
+│   ├── App.jsx            # Main App component
+│   ├── main.jsx           # Entry point
+│   └── index.css          # Global styles
+├── public/                # Static assets
+├── dist/                  # Production build output
+├── package.json           # Project dependencies and scripts
+├── vite.config.js         # Vite configuration
+├── vercel.json            # Deployment configuration
+├── .gitignore             # Git ignored files
+└── index.html             # HTML entry point
 ```
 
 ## 🚀 Getting Started
@@ -73,6 +82,9 @@ src/
 
 ```bash
 # Clone the repository
+# Navigate to the project root directory
+cd PLACIFY-FRONTEND
+
 # Navigate to the frontend directory
 cd frontend
 
@@ -114,6 +126,8 @@ This application is configured for deployment to Vercel:
 3. Vercel will automatically detect the Vite framework
 4. Set the build command to `npm run build`
 5. Set the output directory to `dist`
+
+The `vercel.json` configuration file is located in the `frontend` directory and handles API proxying.
 
 ### Environment Variables
 
