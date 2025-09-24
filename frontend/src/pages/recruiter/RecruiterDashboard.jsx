@@ -526,9 +526,9 @@ export default function RecruiterDashboard() {
               </div>
 
               <div className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start">
+                <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 lg:gap-8">
                   {/* Company Logo Display - Increased size */}
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30 mb-4 sm:mb-0 sm:mr-4">
+                  <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30 flex-shrink-0">
                     {safeDashboardData.company?.logo ? (
                       <img
                         src={safeDashboardData.company.logo}
@@ -537,7 +537,7 @@ export default function RecruiterDashboard() {
                       />
                     ) : (
                       <svg
-                        className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400"
+                        className="w-16 h-16 lg:w-20 lg:h-20 text-gray-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -551,29 +551,41 @@ export default function RecruiterDashboard() {
                       </svg>
                     )}
                   </div>
-                  <div className="text-center sm:text-left">
-                    {/* Increased company name size */}
-                    <h3 className="text-xl sm:text-2xl font-bold">{safeDashboardData.company.name || "Company Name"}</h3>
-                    {/* Increased profile completion text size */}
-                    <p className="text-base sm:text-lg text-gray-400 mt-1">
-                      Profile Completeness: {safeDashboardData.company.profileCompleteness !== undefined ? `${safeDashboardData.company.profileCompleteness}%` : "N/A"}
-                    </p>
+                  
+                  <div className="flex-1">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-5">
+                      {/* Company name with website link */}
+                      <h3 className="text-2xl lg:text-3xl font-bold">
+                        <a 
+                          href={safeDashboardData.company.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-white hover:text-gray-300 transition-colors flex items-center gap-2"
+                        >
+                          {safeDashboardData.company.name || "Company Name"}
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </h3>
+                    </div>
+                    
+                    {/* Action buttons below company name */}
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => window.location.href = "/recruiter/company"}
+                        className="px-4 py-2 lg:px-5 lg:py-2.5 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-base"
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => window.location.href = "/recruiter/jobs"}
+                        className="px-4 py-2 lg:px-5 lg:py-2.5 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-base"
+                      >
+                        Manage Jobs
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
-                  <button
-                    onClick={() => window.location.href = "/recruiter/company"}
-                    className="px-3 py-2 sm:px-4 sm:py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition text-sm sm:text-base"
-                  >
-                    View Profile
-                  </button>
-                  <button
-                    onClick={() => window.location.href = "/recruiter/jobs"}
-                    className="px-3 py-2 sm:px-4 sm:py-2 font-semibold rounded-lg bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-sm sm:text-base"
-                  >
-                    Manage Jobs
-                  </button>
                 </div>
               </div>
 
