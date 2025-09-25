@@ -75,7 +75,7 @@ export default function Landing() {
         <div className="flex flex-col sm:flex-row gap-4">
           {/* GET STARTED Button */}
           <button
-            onClick={handleExploreJobs}
+            onClick={() => { handleExploreJobs(); scrollToTop(); }}
             className="bg-white text-black px-8 py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
             aria-label="Jobs and Explore Jobs"
           >
@@ -182,7 +182,7 @@ export default function Landing() {
 
           <div className="flex flex-col sm:flex-row gap-4">
             <button
-              onClick={() => { handleExploreJobs(); scrollToTop() }}
+              onClick={() => { handleExploreJobs(); scrollToTop(); }}
               className="bg-white text-black px-6 py-2 rounded-full font-semibold text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2 group"
               aria-label="Jobs and Explore Jobs"
             >

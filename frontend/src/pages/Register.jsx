@@ -579,15 +579,15 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading || rateLimited}
-              className={`w-full py-2.5 sm:py-3 px-4 rounded-lg font-medium text-sm sm:text-base transition-all ${
+              className={`w-full py-2.5 px-4 font-semibold rounded-full border transition ${
                 loading || rateLimited
-                  ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-white text-gray-900 hover:bg-gray-200 focus:ring-2 focus:ring-gray-800"
-              }`}
+                  ? "opacity-50 cursor-not-allowed bg-gray-600 border-gray-500 text-gray-300" 
+                  : "bg-white/10 border-white/30 text-white hover:bg-white/20"
+              } text-sm sm:text-base`}
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   Creating account...
                 </div>
               ) : rateLimited ? (

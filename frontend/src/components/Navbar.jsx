@@ -14,6 +14,18 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleLoginClick = () => {
+    scrollToTop();
+  };
+
+  const handleRegisterClick = () => {
+    scrollToTop();
+  };
+
   const dashPath =
     role === "student"
       ? "/student/dashboard"
@@ -49,10 +61,11 @@ export default function Navbar() {
             <Link
               to="/login"
               className="px-4 py-1.5 rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition text-sm md:text-base"
+              onClick={handleLoginClick}
             >
               Login
             </Link>
-            <Link to="/register">Register</Link>
+            <Link to="/register" onClick={handleRegisterClick}>Register</Link>
           </>
         )}
       </div>
@@ -88,14 +101,20 @@ export default function Navbar() {
               <Link
                 to="/login"
                 className="text-sm font-semibold px-4 py-1.5 rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={() => {
+                  handleLoginClick();
+                  setIsMenuOpen(false);
+                }}
               >
                 Login
               </Link>
               <Link 
                 to="/register" 
                 className="text-sm font-semibold py-1.5 px-3 text-white hover:text-white/80 transition"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={() => {
+                  handleRegisterClick();
+                  setIsMenuOpen(false);
+                }}
               >
                 Register
               </Link>
