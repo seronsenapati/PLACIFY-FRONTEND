@@ -17,6 +17,9 @@ import {
 import { formatDate, getStatusStyles } from "../../utils/formatUtils";
 import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
+// Track ongoing requests to prevent duplicates
+const requestTracker = new Map();
+
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState([]);
@@ -26,6 +29,21 @@ export default function StudentDashboard() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Function to check if a request is already in progress
+  const isRequestInProgress = (key) => {
+    return requestTracker.has(key) && requestTracker.get(key).status === 'pending';
+  };
+
+  // Function to mark a request as in progress
+  const markRequestInProgress = (key) => {
+    requestTracker.set(key, { status: 'pending', timestamp: Date.now() });
+  };
+
+  // Function to mark a request as completed
+  const markRequestCompleted = (key) => {
+    requestTracker.set(key, { status: 'completed', timestamp: Date.now() });
+  };
 
   async function loadDashboardData() {
     setLoading(true);
@@ -39,6 +57,14 @@ export default function StudentDashboard() {
         setLoading(false);
         return;
       }
+
+      // Check if we're already fetching dashboard data
+      if (isRequestInProgress('dashboard')) {
+        console.log('Dashboard data request already in progress, skipping...');
+        return;
+      }
+
+      markRequestInProgress('dashboard');
 
       // Load applications data
       const applicationsRes = await api.getCached("/applications/student");
@@ -57,9 +83,12 @@ export default function StudentDashboard() {
 
       setApplications(applicationsData);
       setBookmarkedJobs(bookmarksData);
+      
+      markRequestCompleted('dashboard');
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setErrorMsg('Failed to load dashboard data. Please try again later.');
+      markRequestCompleted('dashboard');
     } finally {
       setLoading(false);
     }

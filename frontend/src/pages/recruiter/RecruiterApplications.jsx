@@ -18,7 +18,6 @@ import {
   Download as DownloadIcon
 } from "../../components/CustomIcons";
 import { formatDate } from "../../utils/formatUtils";
-import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function RecruiterApplications() {
   const [applications, setApplications] = useState([]);
@@ -71,34 +70,10 @@ export default function RecruiterApplications() {
       // Set loading to true when fetching jobs
       setLoading(true);
 
-      // Try to get cached jobs data first
-      const cachedJobs = sessionStorage.getItem('recruiter_my_jobs');
-      if (cachedJobs) {
-        const { data, timestamp } = JSON.parse(cachedJobs);
-        // Use cached data if it's less than 5 minutes old
-        if (Date.now() - timestamp < 300000) {
-          console.log("[Cache] Using cached recruiter jobs data");
-          const jobsData = Array.isArray(data.jobs) ? data.jobs : [];
-          setJobs(jobsData);
-          setSelectedJob('all');
-          setLoading(false);
-          return;
-        }
-      }
-
       // Use the correct endpoint to get recruiter's jobs
-      const res = await api.getCached("/jobs/recruiter/my-jobs");
+      const res = await api.get("/jobs/recruiter/my-jobs");
       // Ensure jobs is always an array by accessing data.jobs
       const jobsData = Array.isArray(res.data.data.jobs) ? res.data.data.jobs : [];
-      
-      // Cache the data
-      sessionStorage.setItem('recruiter_my_jobs', JSON.stringify({
-        data: {
-          jobs: jobsData
-        },
-        timestamp: Date.now()
-      }));
-      
       setJobs(jobsData);
       // Select "all" applications by default and load them
       setSelectedJob('all');
@@ -197,36 +172,9 @@ export default function RecruiterApplications() {
         setPagination(allPagination);
         setStats(allStats);
       } else {
-        // Try to get cached applications data first
-        const cacheKey = `recruiter_applications_${selectedJob}_${JSON.stringify(filters)}`;
-        const cachedData = sessionStorage.getItem(cacheKey);
-        if (cachedData) {
-          const { data, timestamp } = JSON.parse(cachedData);
-          // Use cached data if it's less than 5 minutes old
-          if (Date.now() - timestamp < 300000) {
-            console.log("[Cache] Using cached recruiter applications data");
-            setApplications(data.applications || []);
-            setPagination(data.pagination || {});
-            setStats(data.statistics || {});
-            setLoading(false);
-            return;
-          }
-        }
-
         // Use the correct endpoint for job applications
-        const res = await api.getCached(`/applications/job/${selectedJob}?${queryParams.toString()}`);
+        const res = await api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`);
         const data = res.data.data;
-        
-        // Cache the data
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: {
-            applications: data.applications || [],
-            pagination: data.pagination || {},
-            statistics: data.statistics || {}
-          },
-          timestamp: Date.now()
-        }));
-        
         setApplications(data.applications || []);
         setPagination(data.pagination || {});
         // Extract statistics from the statistics field in the response

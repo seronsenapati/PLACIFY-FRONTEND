@@ -30,6 +30,9 @@ api.interceptors.request.use(
   }
 );
 
+// Rate limiting tracking
+const rateLimitTracker = new Map();
+
 // Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => response,
@@ -91,6 +94,13 @@ api.interceptors.response.use(
           return Promise.reject(new Error('Requested resource not found.'));
         case 429:
           console.error('Too many requests - rate limited');
+          // Extract retry-after header if available
+          const retryAfter = error.response.headers['retry-after'] || 30;
+          // Store rate limit info
+          rateLimitTracker.set(originalRequest.url, {
+            timestamp: Date.now(),
+            retryAfter: parseInt(retryAfter)
+          });
           return Promise.reject(new Error('Too many requests. Please wait a moment and try again.'));
         case 500:
           console.error('Server error');
@@ -122,6 +132,16 @@ api.getCached = async (url, config = {}) => {
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     console.log(`[API Cache] Returning cached data for ${url}`);
     return Promise.resolve(cached.data);
+  }
+  
+  // Check rate limiting
+  const rateLimitInfo = rateLimitTracker.get(url);
+  if (rateLimitInfo) {
+    const timeSinceRateLimit = Date.now() - rateLimitInfo.timestamp;
+    if (timeSinceRateLimit < rateLimitInfo.retryAfter * 1000) {
+      console.error(`Rate limited for ${url}. Please wait before retrying.`);
+      throw new Error('Too many requests. Please wait a moment and try again.');
+    }
   }
   
   try {

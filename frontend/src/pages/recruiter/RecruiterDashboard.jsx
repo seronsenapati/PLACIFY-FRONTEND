@@ -12,7 +12,7 @@ import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
-import { getUserId, getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
+import { getUserId } from "../../utils/auth";
 
 export default function RecruiterDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -39,17 +39,6 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
-        // Try to get cached company data first
-        const cachedCompany = sessionStorage.getItem('company_data');
-        if (cachedCompany) {
-          const { data, timestamp } = JSON.parse(cachedCompany);
-          // Use cached data if it's less than 5 minutes old
-          if (Date.now() - timestamp < 300000) {
-            setCompany(data);
-            return;
-          }
-        }
-        
         const res = await api.get("/companies");
         console.log("[Dashboard] Companies API response:", res);
         if (res?.data?.data?.companies && res.data.data.companies.length > 0) {
@@ -66,12 +55,6 @@ export default function RecruiterDashboard() {
             console.log("[Dashboard] User company data:", userCompany);
             console.log("[Dashboard] Company logo URL:", userCompany?.logo);
             setCompany(userCompany);
-            
-            // Cache the result
-            sessionStorage.setItem('company_data', JSON.stringify({
-              data: userCompany,
-              timestamp: Date.now()
-            }));
           } else {
             console.log("[Dashboard] No company found for current user");
           }
@@ -96,14 +79,6 @@ export default function RecruiterDashboard() {
       setLoading(true);
       setError(null);
 
-      // Try to get cached dashboard data first
-      const cachedData = getCachedDashboardData();
-      if (cachedData) {
-        setDashboardData(cachedData);
-        setLoading(false);
-        return;
-      }
-
       // Try to load the main dashboard data first
       const res = await api.get("/dashboard/recruiter/overview");
       console.log("[Dashboard] Main dashboard API response:", res);
@@ -113,9 +88,6 @@ export default function RecruiterDashboard() {
         const dashboardData = res.data.data;
         console.log("[Dashboard] Main dashboard data:", dashboardData);
         setDashboardData(dashboardData);
-        
-        // Cache the result
-        setCachedDashboardData(dashboardData);
       } else {
         throw new Error("Invalid response structure from server");
       }
@@ -583,12 +555,12 @@ export default function RecruiterDashboard() {
                   <div className="flex-1">
                     <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-5">
                       {/* Company name with website link */}
-                      <h3 className="text-2xl lg:text-3xl font-bold text-center lg:text-left">
+                      <h3 className="text-2xl lg:text-3xl font-bold">
                         <a 
                           href={safeDashboardData.company.website} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-white hover:text-gray-300 transition-colors flex items-center justify-center lg:justify-start gap-2"
+                          className="text-white hover:text-gray-300 transition-colors flex items-center gap-2"
                         >
                           {safeDashboardData.company.name || "Company Name"}
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
