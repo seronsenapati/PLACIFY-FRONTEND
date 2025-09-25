@@ -18,7 +18,6 @@ import {
   FileText as FileTextIcon
 } from "../../components/CustomIcons";
 import { formatDate } from "../../utils/formatUtils";
-import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function StudentApplications() {
   const [applications, setApplications] = useState([]);
@@ -62,21 +61,6 @@ export default function StudentApplications() {
   async function loadApplications() {
     setLoading(true);
     try {
-      // Try to get cached applications data first
-      const cacheKey = `student_applications_${JSON.stringify(filters)}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        const { data, timestamp } = JSON.parse(cachedData);
-        // Use cached data if it's less than 5 minutes old
-        if (Date.now() - timestamp < 300000) {
-          console.log("[Cache] Using cached student applications data");
-          setApplications(data.applications || []);
-          setPagination(data.pagination || {});
-          setLoading(false);
-          return;
-        }
-      }
-
       const queryParams = new URLSearchParams();
       if (filters.page) queryParams.append('page', filters.page);
       if (filters.limit) queryParams.append('limit', filters.limit);
@@ -85,18 +69,8 @@ export default function StudentApplications() {
       if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
       if (filters.order) queryParams.append('order', filters.order);
 
-      const res = await api.getCached(`/applications/student?${queryParams.toString()}`);
+      const res = await api.get(`/applications/student?${queryParams.toString()}`);
       const data = res.data.data;
-      
-      // Cache the data
-      sessionStorage.setItem(cacheKey, JSON.stringify({
-        data: {
-          applications: data.applications || [],
-          pagination: data.pagination || {}
-        },
-        timestamp: Date.now()
-      }));
-      
       setApplications(data.applications || []);
       setPagination(data.pagination || {});
     } catch (err) {
@@ -109,26 +83,7 @@ export default function StudentApplications() {
 
   async function loadStats() {
     try {
-      // Try to get cached stats data first
-      const cachedStats = sessionStorage.getItem('student_applications_stats');
-      if (cachedStats) {
-        const { data, timestamp } = JSON.parse(cachedStats);
-        // Use cached data if it's less than 5 minutes old
-        if (Date.now() - timestamp < 300000) {
-          console.log("[Cache] Using cached student applications stats");
-          setStats(data || {});
-          return;
-        }
-      }
-      
-      const res = await api.getCached("/applications/student/stats");
-      
-      // Cache the data
-      sessionStorage.setItem('student_applications_stats', JSON.stringify({
-        data: res.data.data || {},
-        timestamp: Date.now()
-      }));
-      
+      const res = await api.get("/applications/student/stats");
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading application stats:', err);
@@ -144,15 +99,6 @@ export default function StudentApplications() {
       setApplications(prev => prev.map(app => 
         app._id === applicationId ? { ...app, status: 'withdrawn' } : app
       ));
-      
-      // Clear cache when an application is withdrawn
-      sessionStorage.removeItem('student_applications_stats');
-      Object.keys(sessionStorage).forEach(key => {
-        if (key.startsWith('student_applications_')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-      
       setSuccessMsg("Application withdrawn successfully");
       loadStats();
     } catch (err) {

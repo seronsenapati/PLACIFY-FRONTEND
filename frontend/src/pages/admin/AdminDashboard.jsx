@@ -10,11 +10,9 @@ import {
   AlertTriangle as AlertTriangleIcon,
   CheckCircle as CheckCircleIcon,
   XCircle as XCircleIcon,
-  Clock as ClockIcon,
-  Building as BuildingIcon
+  Clock as ClockIcon
 } from "../../components/CustomIcons";
 import { getStatusStyles } from "../../utils/formatUtils";
-import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState([]);
@@ -23,25 +21,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        // Try to get cached admin dashboard data first
-        const cachedData = getCachedDashboardData();
-        if (cachedData && cachedData.reports) {
-          console.log("[Cache] Using cached admin dashboard data");
-          setReports(cachedData.reports);
-          setLoading(false);
-          return;
-        }
-
-        const response = await api.getCached("/reports");
-        const reportsData = response.data;
-        
-        // Cache the data
-        const dashboardData = {
-          reports: reportsData
-        };
-        setCachedDashboardData(dashboardData);
-        
-        setReports(reportsData);
+        const response = await api.get("/reports");
+        setReports(response.data);
       } catch (error) {
         console.error("Error fetching reports:", error);
       } finally {
@@ -68,18 +49,18 @@ export default function AdminDashboard() {
     {
       label: "Companies",
       value: "128",
-      icon: <BuildingIcon className="w-5 h-5 text-amber-300" />,
+      icon: <BuildingOfficeIcon className="w-5 h-5 text-amber-300" />,
     },
     {
       label: "New Applications",
       value: "1,284",
       change: "+24.1%",
-      icon: <FileTextIcon className="w-5 h-5 text-purple-300" />,
+      icon: <DocumentTextIcon className="w-5 h-5 text-purple-300" />,
     },
     {
       label: "Reports Pending",
       value: reports.filter((r) => r.status === "Pending Review").length,
-      icon: <AlertTriangleIcon className="w-5 h-5" />,
+      icon: <AlertCircleIcon className="w-5 h-5" />,
       change: "-2"
     },
     {

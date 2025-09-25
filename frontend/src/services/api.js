@@ -30,9 +30,6 @@ api.interceptors.request.use(
   }
 );
 
-// Rate limiting tracking
-const rateLimitTracker = new Map();
-
 // Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => response,
@@ -94,13 +91,6 @@ api.interceptors.response.use(
           return Promise.reject(new Error('Requested resource not found.'));
         case 429:
           console.error('Too many requests - rate limited');
-          // Extract retry-after header if available
-          const retryAfter = error.response.headers['retry-after'] || 30;
-          // Store rate limit info
-          rateLimitTracker.set(originalRequest.url, {
-            timestamp: Date.now(),
-            retryAfter: parseInt(retryAfter)
-          });
           return Promise.reject(new Error('Too many requests. Please wait a moment and try again.'));
         case 500:
           console.error('Server error');
@@ -118,65 +108,5 @@ api.interceptors.response.use(
     }
   }
 );
-
-// Add caching layer for GET requests
-const cache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Enhanced GET method with caching
-api.getCached = async (url, config = {}) => {
-  const cacheKey = `${url}_${JSON.stringify(config.params || {})}`;
-  const cached = cache.get(cacheKey);
-  
-  // Check if we have valid cached data
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    console.log(`[API Cache] Returning cached data for ${url}`);
-    return Promise.resolve(cached.data);
-  }
-  
-  // Check rate limiting
-  const rateLimitInfo = rateLimitTracker.get(url);
-  if (rateLimitInfo) {
-    const timeSinceRateLimit = Date.now() - rateLimitInfo.timestamp;
-    if (timeSinceRateLimit < rateLimitInfo.retryAfter * 1000) {
-      console.error(`Rate limited for ${url}. Please wait before retrying.`);
-      throw new Error('Too many requests. Please wait a moment and try again.');
-    }
-  }
-  
-  try {
-    // Fetch fresh data
-    const response = await api.get(url, config);
-    
-    // Cache the response
-    cache.set(cacheKey, {
-      data: response,
-      timestamp: Date.now()
-    });
-    
-    console.log(`[API Cache] Cached fresh data for ${url}`);
-    return response;
-  } catch (error) {
-    // If we have cached data and the request fails, return cached data as fallback
-    if (cached) {
-      console.warn(`[API Cache] Using cached data as fallback for ${url}`);
-      return cached.data;
-    }
-    
-    // Otherwise, rethrow the error
-    throw error;
-  }
-};
-
-// Method to clear cache for a specific URL
-api.clearCache = (url, params = {}) => {
-  const cacheKey = `${url}_${JSON.stringify(params)}`;
-  cache.delete(cacheKey);
-};
-
-// Method to clear all cache
-api.clearAllCache = () => {
-  cache.clear();
-};
 
 export default api;

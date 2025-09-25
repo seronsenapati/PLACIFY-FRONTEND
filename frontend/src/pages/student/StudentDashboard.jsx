@@ -15,10 +15,6 @@ import {
   AlertCircle as AlertCircleIcon
 } from "../../components/CustomIcons";
 import { formatDate, getStatusStyles } from "../../utils/formatUtils";
-import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
-
-// Track ongoing requests to prevent duplicates
-const requestTracker = new Map();
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
@@ -30,65 +26,19 @@ export default function StudentDashboard() {
     loadDashboardData();
   }, []);
 
-  // Function to check if a request is already in progress
-  const isRequestInProgress = (key) => {
-    return requestTracker.has(key) && requestTracker.get(key).status === 'pending';
-  };
-
-  // Function to mark a request as in progress
-  const markRequestInProgress = (key) => {
-    requestTracker.set(key, { status: 'pending', timestamp: Date.now() });
-  };
-
-  // Function to mark a request as completed
-  const markRequestCompleted = (key) => {
-    requestTracker.set(key, { status: 'completed', timestamp: Date.now() });
-  };
-
   async function loadDashboardData() {
     setLoading(true);
     try {
-      // Try to get cached dashboard data first
-      const cachedData = getCachedDashboardData();
-      if (cachedData) {
-        console.log("[Cache] Using cached student dashboard data");
-        setApplications(cachedData.applications || []);
-        setBookmarkedJobs(cachedData.bookmarkedJobs || []);
-        setLoading(false);
-        return;
-      }
-
-      // Check if we're already fetching dashboard data
-      if (isRequestInProgress('dashboard')) {
-        console.log('Dashboard data request already in progress, skipping...');
-        return;
-      }
-
-      markRequestInProgress('dashboard');
-
       // Load applications data
-      const applicationsRes = await api.getCached("/applications/student");
-      const applicationsData = applicationsRes.data.data?.applications || [];
+      const applicationsRes = await api.get("/applications/student");
+      setApplications(applicationsRes.data.data?.applications || []);
 
       // Load bookmarked jobs
-      const bookmarksRes = await api.getCached("/jobs/student/bookmarks");
-      const bookmarksData = bookmarksRes.data.data || [];
-
-      // Cache the data
-      const dashboardData = {
-        applications: applicationsData,
-        bookmarkedJobs: bookmarksData
-      };
-      setCachedDashboardData(dashboardData);
-
-      setApplications(applicationsData);
-      setBookmarkedJobs(bookmarksData);
-      
-      markRequestCompleted('dashboard');
+      const bookmarksRes = await api.get("/jobs/student/bookmarks");
+      setBookmarkedJobs(bookmarksRes.data.data || []);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setErrorMsg('Failed to load dashboard data. Please try again later.');
-      markRequestCompleted('dashboard');
     } finally {
       setLoading(false);
     }

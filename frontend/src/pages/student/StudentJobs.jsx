@@ -52,83 +52,52 @@ export default function StudentJobs() {
   }, [errorMsg, successMsg]);
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
-      setErrorMsg("");
-      setSuccessMsg("");
-
-      // Try to get cached jobs data first
-      const cachedJobs = sessionStorage.getItem('student_jobs_list');
-      if (cachedJobs) {
-        const { data, timestamp } = JSON.parse(cachedJobs);
-        // Use cached data if it's less than 5 minutes old
-        if (Date.now() - timestamp < 300000) {
-          setJobs(data.jobs || []);
-          setBookmarked(data.bookmarked || new Set());
-          setApplied(data.applied || new Set());
-          setLoading(false);
-          return;
+    (async () => {
+      try {
+        // Fetch jobs, bookmarks, and applications in parallel
+        const requests = [
+          api.get("/jobs"),
+          api.get("/bookmarks"),
+          api.get("/applications/student")
+        ];
+        
+        const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
+        
+        // Process jobs data
+        let jobsData = [];
+        if (jobsRes.data.data && Array.isArray(jobsRes.data.data.jobs)) {
+          jobsData = jobsRes.data.data.jobs;
+        } else if (jobsRes.data.jobs) {
+          jobsData = jobsRes.data.jobs;
+        } else if (Array.isArray(jobsRes.data)) {
+          jobsData = jobsRes.data;
+        } else if (jobsRes.data.data && Array.isArray(jobsRes.data.data)) {
+          jobsData = jobsRes.data.data;
         }
+        setJobs(jobsData);
+        
+        // Process bookmarks data
+        const bookmarksData = Array.isArray(bookmarksRes.data) 
+          ? bookmarksRes.data 
+          : (bookmarksRes.data?.data || []);
+        const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
+        setBookmarked(bSet);
+        
+        // Process applications data
+        const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+        const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+        setApplied(aSet);
+      } catch (err) {
+        console.error(err);
+        setErrorMsg("Failed to load jobs");
+        setJobs([]); // Set to empty array on error
+        setBookmarked(new Set()); // Reset bookmarks on error
+        setApplied(new Set()); // Reset applications on error
+      } finally {
+        setLoading(false);
       }
-
-      // Fetch jobs, bookmarks, and applications in parallel using cached API
-      const requests = [
-        api.getCached("/jobs"),
-        api.getCached("/bookmarks"),
-        api.getCached("/applications/student")
-      ];
-      
-      const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
-      
-      // Process jobs data
-      let jobsData = [];
-      if (jobsRes.data.data && Array.isArray(jobsRes.data.data.jobs)) {
-        jobsData = jobsRes.data.data.jobs;
-      } else if (jobsRes.data.jobs) {
-        jobsData = jobsRes.data.jobs;
-      } else if (Array.isArray(jobsRes.data)) {
-        jobsData = jobsRes.data;
-      } else if (jobsRes.data.data && Array.isArray(jobsRes.data.data)) {
-        jobsData = jobsRes.data.data;
-      }
-      
-      // Process bookmarks data
-      const bookmarksData = Array.isArray(bookmarksRes.data) 
-        ? bookmarksRes.data 
-        : (bookmarksRes.data?.data || []);
-      const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
-      
-      // Process applications data
-      const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
-      const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
-      
-      // Cache the data
-      sessionStorage.setItem('student_jobs_list', JSON.stringify({
-        data: {
-          jobs: jobsData,
-          bookmarked: bSet,
-          applied: aSet
-        },
-        timestamp: Date.now()
-      }));
-      
-      setJobs(jobsData);
-      setBookmarked(bSet);
-      setApplied(aSet);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Failed to load jobs");
-      setJobs([]); // Set to empty array on error
-      setBookmarked(new Set()); // Reset bookmarks on error
-      setApplied(new Set()); // Reset applications on error
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+  }, []);
 
   const filtered = useMemo(() => {
     // Ensure jobs is an array before filtering
@@ -158,21 +127,6 @@ export default function StudentJobs() {
         await api.post(`/bookmarks/${id}`);
         setBookmarked(prev => new Set(prev).add(id));
         setSuccessMsg("Job saved successfully");
-      }
-      
-      // Update cached data
-      const cachedJobs = sessionStorage.getItem('student_jobs_list');
-      if (cachedJobs) {
-        const parsed = JSON.parse(cachedJobs);
-        sessionStorage.setItem('student_jobs_list', JSON.stringify({
-          ...parsed,
-          data: {
-            ...parsed.data,
-            bookmarked: bookmarked.has(id) 
-              ? (() => { const s = new Set(parsed.data.bookmarked); s.delete(id); return s; })()
-              : new Set([...parsed.data.bookmarked, id])
-          }
-        }));
       }
     } catch (err) {
       console.error(err);
@@ -239,19 +193,6 @@ export default function StudentJobs() {
       // Add job to applied set
       setApplied(prev => new Set(prev).add(jobId));
       setSuccessMsg("Application submitted successfully");
-      
-      // Update cached data
-      const cachedJobs = sessionStorage.getItem('student_jobs_list');
-      if (cachedJobs) {
-        const parsed = JSON.parse(cachedJobs);
-        sessionStorage.setItem('student_jobs_list', JSON.stringify({
-          ...parsed,
-          data: {
-            ...parsed.data,
-            applied: new Set([...parsed.data.applied, jobId])
-          }
-        }));
-      }
     } catch (err) {
       console.error(err);
       let errorMessage = '';

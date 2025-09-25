@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { isLoggedIn, getRole } from "../utils/auth";
+import { isLoggedIn, getRole, logout } from "../utils/auth";
 import LoadingScreen from "../components/LoadingScreen";
 import Message from "../components/Message";
 import {
@@ -18,9 +18,6 @@ import {
   Eye,
   Check
 } from "lucide-react";
-
-// Track ongoing requests to prevent duplicates
-const requestTracker = new Map();
 
 export default function JobListing() {
   const [jobs, setJobs] = useState([]);
@@ -44,56 +41,30 @@ export default function JobListing() {
     fetchJobs();
   }, []);
 
-  // Function to check if a request is already in progress
-  const isRequestInProgress = (key) => {
-    return requestTracker.has(key) && requestTracker.get(key).status === 'pending';
-  };
-
-  // Function to mark a request as in progress
-  const markRequestInProgress = (key) => {
-    requestTracker.set(key, { status: 'pending', timestamp: Date.now() });
-  };
-
-  // Function to mark a request as completed
-  const markRequestCompleted = (key) => {
-    requestTracker.set(key, { status: 'completed', timestamp: Date.now() });
-  };
-
   const fetchJobs = async () => {
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
 
-      // Try to get cached jobs data first
-      const cachedJobs = sessionStorage.getItem('jobs_list');
-      if (cachedJobs) {
-        const { data, timestamp } = JSON.parse(cachedJobs);
-        // Use cached data if it's less than 5 minutes old
-        if (Date.now() - timestamp < 300000) {
-          setJobs(data);
-          setLoading(false);
-          
-          // Fetch bookmarks and applications in background for logged-in users
-          if (loggedIn && role === 'student') {
-            fetchUserDataInBackground();
-          }
-          return;
-        }
+      // Fetch jobs, bookmarks, and applications in parallel
+      const requests = [
+        api.get('/jobs'),
+        loggedIn && role === 'student' ? api.get('/bookmarks') : Promise.resolve({ data: [] })
+      ];
+
+      // Add applications request if user is a student
+      if (loggedIn && role === 'student') {
+        requests.push(api.get('/applications/student'));
+      } else {
+        requests.push(Promise.resolve({ data: [] }));
       }
 
-      // Check if we're already fetching jobs
-      if (isRequestInProgress('jobs')) {
-        console.log('Jobs request already in progress, skipping...');
-        return;
-      }
+      const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
 
-      markRequestInProgress('jobs');
-      
-      // Fetch jobs
-      const jobsRes = await api.getCached('/jobs');
-      
-      markRequestCompleted('jobs');
+      console.log('Jobs response:', jobsRes);
+      console.log('Bookmarks response:', bookmarksRes);
+      console.log('Applications response:', applicationsRes);
 
       // Extract jobs from the correct response structure
       let jobsData = [];
@@ -109,16 +80,22 @@ export default function JobListing() {
 
       console.log('Processed jobs data:', jobsData);
       setJobs(jobsData);
-      
-      // Cache jobs data
-      sessionStorage.setItem('jobs_list', JSON.stringify({
-        data: jobsData,
-        timestamp: Date.now()
-      }));
 
-      // Process bookmarks and applications for logged-in students
-      if (loggedIn && role === 'student') {
-        await fetchUserDataInBackground();
+      // Process bookmarks if user is a student
+      if (loggedIn && role === 'student' && bookmarksRes.data) {
+        const bookmarksData = Array.isArray(bookmarksRes.data)
+          ? bookmarksRes.data
+          : (bookmarksRes.data?.data || []);
+        const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
+        setBookmarked(bSet);
+      }
+
+      // Process applications if user is a student
+      if (loggedIn && role === 'student' && applicationsRes.data) {
+        const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+        console.log('Applications data:', applicationsData);
+        const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+        setApplied(aSet);
       }
     } catch (err) {
       console.error('Error fetching jobs:', err);
@@ -141,48 +118,6 @@ export default function JobListing() {
       }
     } finally {
       setLoading(false);
-      markRequestCompleted('jobs');
-    }
-  };
-
-  // Fetch user data (bookmarks, applications) in background
-  const fetchUserDataInBackground = async () => {
-    try {
-      if (loggedIn && role === 'student') {
-        // Check if we're already fetching bookmarks
-        if (!isRequestInProgress('bookmarks')) {
-          markRequestInProgress('bookmarks');
-          // Fetch bookmarks
-          const bookmarksRes = await api.getCached('/bookmarks');
-          if (bookmarksRes.data) {
-            const bookmarksData = Array.isArray(bookmarksRes.data)
-              ? bookmarksRes.data
-              : (bookmarksRes.data?.data || []);
-            const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
-            setBookmarked(bSet);
-          }
-          markRequestCompleted('bookmarks');
-        }
-
-        // Check if we're already fetching applications
-        if (!isRequestInProgress('applications')) {
-          markRequestInProgress('applications');
-          // Fetch applications
-          const applicationsRes = await api.getCached('/applications/student');
-          if (applicationsRes.data) {
-            const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
-            console.log('Applications data:', applicationsData);
-            const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
-            setApplied(aSet);
-          }
-          markRequestCompleted('applications');
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching user data in background:', err);
-      // Mark requests as completed even if they fail
-      markRequestCompleted('bookmarks');
-      markRequestCompleted('applications');
     }
   };
 
@@ -296,11 +231,7 @@ export default function JobListing() {
           }
         } else if (err.response.status === 401) {
           errorMessage = 'Authentication required. Please log in again.';
-          // Clear invalid auth data
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          localStorage.removeItem('name');
-          localStorage.removeItem('userId');
+          logout(); // Clear invalid auth data
           navigate('/login');
         } else if (err.response.status === 403) {
           errorMessage = 'Access denied. Only students can apply for jobs.';
@@ -575,10 +506,10 @@ export default function JobListing() {
                               }`}
                           >
                             {isApplied ? (
-                              <div className="flex items-center">
+                              <>
                                 <Check className="w-4 h-4 mr-1 flex-shrink-0" />
                                 <span>Applied</span>
-                              </div>
+                              </>
                             ) : (
                               "Apply Now"
                             )}
@@ -748,10 +679,10 @@ export default function JobListing() {
                         }`}
                     >
                       {applied.has(selectedJob._id || selectedJob.id) ? (
-                        <div className="flex items-center">
+                        <>
                           <Check className="w-4 h-4 mr-1 flex-shrink-0" />
                           <span>Applied</span>
-                        </div>
+                        </>
                       ) : (
                         "Apply Now"
                       )}
