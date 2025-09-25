@@ -1,6 +1,7 @@
 // src/pages/recruiter/RecruiterSettings.jsx
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache"; // Added import for caching utility
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -114,7 +115,11 @@ export default function RecruiterSettings() {
         const token = localStorage.getItem('token');
         console.log("[RecruiterSettings] Auth token exists:", !!token);
         
-        const res = await api.get("/settings/recruiter");
+        // Use cachedApiCall for GET requests that benefit from caching
+        const res = await cachedApiCall(
+          () => api.get("/settings/recruiter"),
+          "/settings/recruiter"
+        );
         const settingsData = res.data?.data || {};
         if (settingsData && Object.keys(settingsData).length > 0) {
           setRecruiterSettings(settingsData);

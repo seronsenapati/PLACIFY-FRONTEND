@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { handleCacheInvalidation } from '../utils/cache';
 
 // Create an Axios instance with default config
 const api = axios.create({
@@ -106,6 +107,20 @@ api.interceptors.response.use(
       console.error('Error setting up request:', error.message);
       return Promise.reject(new Error('An unexpected error occurred. Please try again.'));
     }
+  }
+);
+
+// Add request interceptor for cache invalidation
+api.interceptors.request.use(
+  (config) => {
+    // Handle cache invalidation for mutations
+    if (['post', 'put', 'delete', 'patch'].includes(config.method)) {
+      handleCacheInvalidation(config.method, config.url);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
 );
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache"; // Added import for caching utility
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -27,6 +28,7 @@ import { formatDate } from "../../utils/formatUtils";
 export default function RecruiterManageJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true); // Track initial load
   const [actionLoading, setActionLoading] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
@@ -67,12 +69,23 @@ export default function RecruiterManageJobs() {
 
   async function loadJobs() {
     try {
+      // Show loading indicator for initial load
+      if (initialLoad) {
+        setLoading(true);
+      }
+      
       const queryParams = new URLSearchParams();
       Object.keys(filters).forEach(key => {
         if (filters[key]) queryParams.append(key, filters[key]);
       });
 
-      const res = await api.get(`/jobs/recruiter/my-jobs?${queryParams.toString()}`);
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get(`/jobs/recruiter/my-jobs?${queryParams.toString()}`),
+        "/jobs/recruiter/my-jobs",
+        { ...filters },
+        { showCachedImmediately: !initialLoad } // Show cached immediately for non-initial loads
+      );
       const data = res.data.data;
       setJobs(data.jobs || []);
       setPagination({
@@ -93,12 +106,19 @@ export default function RecruiterManageJobs() {
       }
     } finally {
       setLoading(false);
+      setInitialLoad(false); // Mark initial load as complete
     }
   }
 
   async function loadStats() {
     try {
-      const res = await api.get("/jobs/recruiter/stats");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/jobs/recruiter/stats"),
+        "/jobs/recruiter/stats",
+        {},
+        { showCachedImmediately: !initialLoad } // Show cached immediately for non-initial loads
+      );
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -109,7 +129,11 @@ export default function RecruiterManageJobs() {
   // Check if recruiter has company profile
   async function checkCompanyProfile() {
     try {
-      const res = await api.get("/profile");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/profile"),
+        "/profile"
+      );
       const userData = res.data.data;
       console.log("User profile data:", userData);
 
@@ -277,44 +301,51 @@ export default function RecruiterManageJobs() {
     <div className="min-h-[calc(100vh-6rem)] flex justify-center items-start w-full">
       <div className="w-full max-w-1xl mx-auto p-3 bg-black/20 rounded-lg min-h-[calc(100vh-8rem)]">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Manage Jobs</h1>
-              <p className="text-gray-400">Create, edit, and manage your job postings</p>
-            </div>
-            <button
-              onClick={async () => {
-                // Refresh profile data and check if recruiter has company profile
-                console.log("Refreshing profile and checking company before creating job...");
-                try {
-                  // Force refresh the profile data
-                  await api.get("/profile");
-                  // Now check company profile
-                  const hasCompany = await checkCompanyProfile();
-                  console.log("Company profile check result:", hasCompany);
-                  if (!hasCompany) {
-                    setErrorMsg("You must create a company profile before posting jobs. Please create a company first.");
-                    return;
-                  }
-                } catch (err) {
-                  console.error("Error refreshing profile:", err);
-                  setErrorMsg("Error checking your profile. Please try again.");
-                  return;
-                }
-                setCurrentJob(null);
-                setShowCreateModal(true);
-              }}
-              // Changed hover effect to blue
-              className="px-3 py-2 sm:px-4 sm:py-2.5 font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition flex items-center gap-2 text-sm sm:text-base"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create New Job
-            </button>
+        <div className="mb-5 sm:mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Manage Jobs</h1>
+            <p className="text-gray-400 text-sm sm:text-base">Create, edit, and track your job postings</p>
           </div>
+          <button
+            onClick={() => { loadJobs(); loadStats(); }}
+            disabled={loading}
+            className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-white disabled:opacity-50 transition flex items-center gap-1"
+          >
+            {loading ? (
+              <>
+                <MiniLoader />
+                Refreshing...
+              </>
+            ) : (
+              'Refresh'
+            )}
+          </button>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Messages */}
+        {successMsg && (
+          <Message 
+            type="success" 
+            message={successMsg} 
+            onClose={() => setSuccessMsg("")} 
+          />
+        )}
+        {errorMsg && (
+          <Message 
+            type="error" 
+            message={errorMsg} 
+            onClose={() => setErrorMsg("")} 
+          />
+        )}
+
+        {/* Loading indicator for non-initial loads */}
+        {loading && !initialLoad && (
+          <div className="flex justify-center py-4">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {/* Stats Cards */}
         {Object.keys(stats).length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
             <div className="bg-white/5 rounded-lg border border-white/10 p-4">
@@ -368,24 +399,6 @@ export default function RecruiterManageJobs() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Success Message */}
-        {successMsg && (
-          <Message 
-            type="success" 
-            message={successMsg} 
-            onClose={() => setSuccessMsg("")} 
-          />
-        )}
-
-        {/* Error Message */}
-        {errorMsg && (
-          <Message 
-            type="error" 
-            message={errorMsg} 
-            onClose={() => setErrorMsg("")} 
-          />
         )}
 
         {/* Filters and Search */}

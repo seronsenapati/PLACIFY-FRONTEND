@@ -5,6 +5,7 @@ import api from "../services/api";
 import { isLoggedIn, getRole, logout } from "../utils/auth";
 import LoadingScreen from "../components/LoadingScreen";
 import Message from "../components/Message";
+import { cachedApiCall, generateCacheKey, getCachedData } from "../utils/cache"; // Added imports for caching utility functions
 import {
   Search,
   MapPin,
@@ -21,7 +22,8 @@ import {
 
 export default function JobListing() {
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Changed initial state to false
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [bookmarked, setBookmarked] = useState(new Set());
@@ -38,64 +40,136 @@ export default function JobListing() {
   const role = getRole();
 
   useEffect(() => {
+    // Load cached data immediately on component mount
+    loadCachedData();
+    // Then fetch fresh data
     fetchJobs();
   }, []);
 
+  // Load cached data immediately without showing loading state
+  const loadCachedData = () => {
+    try {
+      // Try to load cached jobs
+      const jobsCacheKey = generateCacheKey("/jobs", {});
+      const cachedJobs = getCachedData(jobsCacheKey);
+      
+      if (cachedJobs) {
+        console.log('[Cache] Loading cached jobs immediately');
+        processJobsData(cachedJobs, true);
+        // Since we have cached data, we don't need to show the full loading screen
+        setInitialLoad(false);
+      }
+      
+      // If user is student, try to load cached bookmarks and applications
+      if (loggedIn && role === 'student') {
+        // Load cached bookmarks
+        const bookmarksCacheKey = generateCacheKey("/bookmarks", {});
+        const cachedBookmarks = getCachedData(bookmarksCacheKey);
+        
+        if (cachedBookmarks) {
+          console.log('[Cache] Loading cached bookmarks immediately');
+          processBookmarksData(cachedBookmarks);
+        }
+        
+        // Load cached applications
+        const applicationsCacheKey = generateCacheKey("/applications/student", {});
+        const cachedApplications = getCachedData(applicationsCacheKey);
+        
+        if (cachedApplications) {
+          console.log('[Cache] Loading cached applications immediately');
+          processApplicationsData(cachedApplications);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading cached data:', err);
+    }
+  };
+
+  const processJobsData = (jobsRes, isFromCache = false) => {
+    // Extract jobs from the correct response structure
+    let jobsData = [];
+    if (jobsRes.data?.data && Array.isArray(jobsRes.data.data.jobs)) {
+      jobsData = jobsRes.data.data.jobs;
+    } else if (jobsRes.data?.jobs) {
+      jobsData = jobsRes.data.jobs;
+    } else if (Array.isArray(jobsRes.data)) {
+      jobsData = jobsRes.data;
+    } else if (jobsRes.data?.data && Array.isArray(jobsRes.data.data)) {
+      jobsData = jobsRes.data.data;
+    }
+
+    console.log(`${isFromCache ? '[Cache]' : ''} Processed jobs data:`, jobsData);
+    setJobs(jobsData);
+  };
+
+  const processBookmarksData = (bookmarksRes) => {
+    if (bookmarksRes.data) {
+      const bookmarksData = Array.isArray(bookmarksRes.data)
+        ? bookmarksRes.data
+        : (bookmarksRes.data?.data || []);
+      const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
+      setBookmarked(bSet);
+    }
+  };
+
+  const processApplicationsData = (applicationsRes) => {
+    if (applicationsRes.data) {
+      const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+      console.log('[Cache] Applications data:', applicationsData);
+      const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+      setApplied(aSet);
+    }
+  };
+
   const fetchJobs = async () => {
     try {
-      setLoading(true);
+      // Only show loading indicator for initial load if no cached data
+      if (initialLoad && jobs.length === 0) {
+        setLoading(true);
+      }
       setError(null);
       setSuccess(null);
 
-      // Fetch jobs, bookmarks, and applications in parallel
+      // Fetch jobs, bookmarks, and applications in parallel with caching
+      // Use showCachedImmediately to show cached data immediately while fetching fresh data
       const requests = [
-        api.get('/jobs'),
-        loggedIn && role === 'student' ? api.get('/bookmarks') : Promise.resolve({ data: [] })
+        cachedApiCall(
+          () => api.get('/jobs'),
+          "/jobs",
+          {},
+          { showCachedImmediately: true } // Always show cached immediately
+        ),
+        loggedIn && role === 'student' ? cachedApiCall(
+          () => api.get('/bookmarks'),
+          "/bookmarks",
+          {},
+          { showCachedImmediately: true } // Always show cached immediately
+        ) : Promise.resolve({ data: [] })
       ];
 
       // Add applications request if user is a student
       if (loggedIn && role === 'student') {
-        requests.push(api.get('/applications/student'));
+        requests.push(cachedApiCall(
+          () => api.get('/applications/student'),
+          "/applications/student",
+          {},
+          { showCachedImmediately: true } // Always show cached immediately
+        ));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
 
       const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);
 
-      console.log('Jobs response:', jobsRes);
-      console.log('Bookmarks response:', bookmarksRes);
-      console.log('Applications response:', applicationsRes);
+      console.log('Fresh jobs response:', jobsRes);
+      console.log('Fresh bookmarks response:', bookmarksRes);
+      console.log('Fresh applications response:', applicationsRes);
 
-      // Extract jobs from the correct response structure
-      let jobsData = [];
-      if (jobsRes.data.data && Array.isArray(jobsRes.data.data.jobs)) {
-        jobsData = jobsRes.data.data.jobs;
-      } else if (jobsRes.data.jobs) {
-        jobsData = jobsRes.data.jobs;
-      } else if (Array.isArray(jobsRes.data)) {
-        jobsData = jobsRes.data;
-      } else if (jobsRes.data.data && Array.isArray(jobsRes.data.data)) {
-        jobsData = jobsRes.data.data;
-      }
-
-      console.log('Processed jobs data:', jobsData);
-      setJobs(jobsData);
-
-      // Process bookmarks if user is a student
-      if (loggedIn && role === 'student' && bookmarksRes.data) {
-        const bookmarksData = Array.isArray(bookmarksRes.data)
-          ? bookmarksRes.data
-          : (bookmarksRes.data?.data || []);
-        const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
-        setBookmarked(bSet);
-      }
-
-      // Process applications if user is a student
-      if (loggedIn && role === 'student' && applicationsRes.data) {
-        const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
-        console.log('Applications data:', applicationsData);
-        const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
-        setApplied(aSet);
+      // Process fresh data
+      processJobsData(jobsRes);
+      if (loggedIn && role === 'student') {
+        processBookmarksData(bookmarksRes);
+        processApplicationsData(applicationsRes);
       }
     } catch (err) {
       console.error('Error fetching jobs:', err);
@@ -118,6 +192,10 @@ export default function JobListing() {
       }
     } finally {
       setLoading(false);
+      // Only set initialLoad to false if it's still true
+      if (initialLoad) {
+        setInitialLoad(false);
+      }
     }
   };
 
@@ -333,7 +411,7 @@ export default function JobListing() {
     setSelectedJob(null);
   };
 
-  if (loading && jobs.length === 0) {
+  if (loading && initialLoad && jobs.length === 0) {
     return (
       <div className="min-h-screen text-white relative overflow-hidden"
         style={{
@@ -378,8 +456,12 @@ export default function JobListing() {
         <div className="w-full max-w-1xl mx-auto p-4 bg-black/20 rounded-lg min-h-[calc(100vh-6rem)]">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">Job Listings</h1>
-            <p className="text-gray-400">Explore available job opportunities and apply today</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-2">Job Listings</h1>
+                <p className="text-gray-400">Explore available job opportunities and apply today</p>
+              </div>
+            </div>
           </div>
 
           {/* Error Messages */}
@@ -400,6 +482,13 @@ export default function JobListing() {
             />
           )}
 
+          {/* Loading indicator for non-initial loads */}
+          {loading && !initialLoad && (
+            <div className="flex justify-center py-4">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+
           {jobs.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -407,12 +496,6 @@ export default function JobListing() {
               </div>
               <h3 className="text-xl font-medium text-white mb-2">No jobs available</h3>
               <p className="text-gray-400 mb-6">Check back later for new opportunities</p>
-              <button
-                onClick={fetchJobs}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition"
-              >
-                Refresh
-              </button>
             </div>
           ) : (
             <div className="space-y-4">

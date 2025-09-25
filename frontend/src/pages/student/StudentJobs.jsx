@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -54,11 +55,20 @@ export default function StudentJobs() {
   useEffect(() => {
     (async () => {
       try {
-        // Fetch jobs, bookmarks, and applications in parallel
+        // Fetch jobs, bookmarks, and applications in parallel with caching
         const requests = [
-          api.get("/jobs"),
-          api.get("/bookmarks"),
-          api.get("/applications/student")
+          cachedApiCall(
+            () => api.get("/jobs"),
+            "/jobs"
+          ),
+          cachedApiCall(
+            () => api.get("/bookmarks"),
+            "/bookmarks"
+          ),
+          cachedApiCall(
+            () => api.get("/applications/student"),
+            "/applications/student"
+          )
         ];
         
         const [jobsRes, bookmarksRes, applicationsRes] = await Promise.all(requests);

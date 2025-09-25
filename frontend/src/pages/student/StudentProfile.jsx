@@ -1,6 +1,7 @@
   // src/pages/student/StudentProfile.jsx
   import { useEffect, useState } from "react";
   import api from "../../services/api";
+  import { cachedApiCall } from "../../utils/cache";
   import LoadingScreen from "../../components/LoadingScreen";
   import MiniLoader from "../../components/MiniLoader";
   import Message from "../../components/Message";
@@ -143,7 +144,11 @@
     useEffect(() => {
       (async () => {
         try {
-          const res = await api.get("/profile");
+          // Use cachedApiCall for GET requests that benefit from caching
+          const res = await cachedApiCall(
+            () => api.get("/profile"),
+            "/profile"
+          );
           const u = res?.data?.data || {};
 
           const mappedEducation = Array.isArray(u.education)

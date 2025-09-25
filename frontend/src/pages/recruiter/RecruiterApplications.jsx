@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache"; // Added import for caching utility
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -70,8 +71,11 @@ export default function RecruiterApplications() {
       // Set loading to true when fetching jobs
       setLoading(true);
 
-      // Use the correct endpoint to get recruiter's jobs
-      const res = await api.get("/jobs/recruiter/my-jobs");
+      // Use the correct endpoint to get recruiter's jobs with caching
+      const res = await cachedApiCall(
+        () => api.get("/jobs/recruiter/my-jobs"),
+        "/jobs/recruiter/my-jobs"
+      );
       // Ensure jobs is always an array by accessing data.jobs
       const jobsData = Array.isArray(res.data.data.jobs) ? res.data.data.jobs : [];
       setJobs(jobsData);
@@ -121,14 +125,17 @@ export default function RecruiterApplications() {
         let allStats = {};
         let allPagination = {};
 
-        // Fetch applications for all jobs
+        // Fetch applications for all jobs with caching
         const jobApplications = await Promise.all(
           jobs.map(job =>
-            api.get(`/applications/job/${job._id}?${queryParams.toString()}`)
-              .catch(err => {
-                console.error(`Error loading applications for job ${job._id}:`, err);
-                return { data: { data: { applications: [], statistics: {}, pagination: {} } } };
-              })
+            cachedApiCall(
+              () => api.get(`/applications/job/${job._id}?${queryParams.toString()}`),
+              `/applications/job/${job._id}`,
+              { ...filters }
+            ).catch(err => {
+              console.error(`Error loading applications for job ${job._id}:`, err);
+              return { data: { data: { applications: [], statistics: {}, pagination: {} } } };
+            })
           )
         );
 
@@ -172,8 +179,12 @@ export default function RecruiterApplications() {
         setPagination(allPagination);
         setStats(allStats);
       } else {
-        // Use the correct endpoint for job applications
-        const res = await api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`);
+        // Use the correct endpoint for job applications with caching
+        const res = await cachedApiCall(
+          () => api.get(`/applications/job/${selectedJob}?${queryParams.toString()}`),
+          `/applications/job/${selectedJob}`,
+          { ...filters }
+        );
         const data = res.data.data;
         setApplications(data.applications || []);
         setPagination(data.pagination || {});

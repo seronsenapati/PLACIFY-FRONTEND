@@ -1,6 +1,7 @@
 // src/pages/recruiter/RecruiterNotifications.jsx
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -58,7 +59,12 @@ export default function RecruiterNotifications() {
       if (filters.priority) queryParams.append('priority', filters.priority);
       if (filters.search) queryParams.append('search', filters.search);
 
-      const res = await api.get(`/notifications?${queryParams.toString()}`);
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get(`/notifications?${queryParams.toString()}`),
+        "/notifications",
+        { ...filters }
+      );
       const data = res.data.data;
       setNotifications(data.notifications || []);
       setPagination(data.pagination || {});
@@ -72,7 +78,11 @@ export default function RecruiterNotifications() {
 
   async function loadStats() {
     try {
-      const res = await api.get("/notifications/stats");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/notifications/stats"),
+        "/notifications/stats"
+      );
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading notification stats:', err);
@@ -81,7 +91,11 @@ export default function RecruiterNotifications() {
 
   async function loadNotificationTypes() {
     try {
-      const res = await api.get("/notifications/types");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/notifications/types"),
+        "/notifications/types"
+      );
       const data = res.data.data;
       setNotificationTypes(data.types || []);
       setPriorities(data.priorities || []);
@@ -170,7 +184,7 @@ export default function RecruiterNotifications() {
       case 'system_message':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         );
       case 'account_update':

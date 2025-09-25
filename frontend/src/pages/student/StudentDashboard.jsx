@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import Message from "../../components/Message";
+import { cachedApiCall } from "../../utils/cache";
 import {
   Briefcase as BriefcaseIcon,
   Calendar as CalendarIcon,
@@ -29,12 +30,18 @@ export default function StudentDashboard() {
   async function loadDashboardData() {
     setLoading(true);
     try {
-      // Load applications data
-      const applicationsRes = await api.get("/applications/student");
+      // Load applications data with caching
+      const applicationsRes = await cachedApiCall(
+        () => api.get("/applications/student"),
+        "/applications/student"
+      );
       setApplications(applicationsRes.data.data?.applications || []);
 
-      // Load bookmarked jobs
-      const bookmarksRes = await api.get("/jobs/student/bookmarks");
+      // Load bookmarked jobs with caching
+      const bookmarksRes = await cachedApiCall(
+        () => api.get("/jobs/student/bookmarks"),
+        "/jobs/student/bookmarks"
+      );
       setBookmarkedJobs(bookmarksRes.data.data || []);
     } catch (err) {
       console.error('Error loading dashboard data:', err);

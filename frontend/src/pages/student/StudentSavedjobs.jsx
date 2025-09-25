@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -56,10 +57,16 @@ export default function StudentSavedJobs() {
   async function load() {
     setLoading(true);
     try {
-      // Fetch bookmarks and applications in parallel
+      // Fetch bookmarks and applications in parallel with caching
       const requests = [
-        api.get("/bookmarks"),
-        api.get("/applications/student")
+        cachedApiCall(
+          () => api.get("/bookmarks"),
+          "/bookmarks"
+        ),
+        cachedApiCall(
+          () => api.get("/applications/student"),
+          "/applications/student"
+        )
       ];
 
       const [bookmarksRes, applicationsRes] = await Promise.all(requests);
@@ -739,4 +746,3 @@ export default function StudentSavedJobs() {
     </div>
   );
 }
-

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../services/api";
-import { setAuthData, clearRateLimitData } from "../utils/auth";
+import { setAuthData, clearRateLimitData, getRole } from "../utils/auth";
+import { cachedApiCall } from "../utils/cache";
 import Message from "../components/Message";
 
 const Login = () => {
@@ -35,6 +36,65 @@ const Login = () => {
       return () => clearTimeout(timer);
     }
   }, [errorMsg, successMsg]);
+
+  // Prefetch data based on user role
+  const prefetchData = async (role) => {
+    try {
+      console.log(`[Prefetch] Starting prefetch for ${role} role`);
+      
+      if (role === "student") {
+        // Prefetch student dashboard data
+        await Promise.allSettled([
+          cachedApiCall(
+            () => api.get("/applications/student"),
+            "/applications/student"
+          ),
+          cachedApiCall(
+            () => api.get("/jobs/student/bookmarks"),
+            "/jobs/student/bookmarks"
+          ),
+          cachedApiCall(
+            () => api.get("/jobs"),
+            "/jobs"
+          )
+        ]);
+      } else if (role === "recruiter") {
+        // Prefetch recruiter dashboard data
+        await Promise.allSettled([
+          cachedApiCall(
+            () => api.get("/dashboard/recruiter/overview"),
+            "/dashboard/recruiter/overview"
+          ),
+          cachedApiCall(
+            () => api.get("/jobs/recruiter/my-jobs?limit=5"),
+            "/jobs/recruiter/my-jobs",
+            { limit: 5 }
+          ),
+          cachedApiCall(
+            () => api.get("/applications/recruiter/stats"),
+            "/applications/recruiter/stats"
+          ),
+          cachedApiCall(
+            () => api.get("/companies"),
+            "/companies"
+          )
+        ]);
+      } else if (role === "admin") {
+        // Prefetch admin dashboard data
+        await Promise.allSettled([
+          cachedApiCall(
+            () => api.get("/reports"),
+            "/reports"
+          )
+        ]);
+      }
+      
+      console.log(`[Prefetch] Completed prefetch for ${role} role`);
+    } catch (error) {
+      console.error(`[Prefetch] Error during prefetch for ${role}:`, error);
+      // Don't fail login if prefetch fails
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +131,9 @@ const Login = () => {
       
       // Clear any existing rate limit data on successful login
       clearRateLimitData('login');
+      
+      // Start prefetching data in background
+      prefetchData(user.role);
       
       // Check for saved redirect path
       const redirectPath = localStorage.getItem('redirectAfterLogin');

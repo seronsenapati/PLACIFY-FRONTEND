@@ -1,6 +1,7 @@
 // src/pages/student/StudentNotifications.jsx
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache"; // Added import for caching utility
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -58,7 +59,12 @@ export default function StudentNotifications() {
       if (filters.priority) queryParams.append('priority', filters.priority);
       if (filters.search) queryParams.append('search', filters.search);
 
-      const res = await api.get(`/notifications?${queryParams.toString()}`);
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get(`/notifications?${queryParams.toString()}`),
+        "/notifications",
+        { ...filters }
+      );
       const data = res.data.data;
       setNotifications(data.notifications || []);
       setPagination(data.pagination || {});
@@ -72,7 +78,11 @@ export default function StudentNotifications() {
 
   async function loadStats() {
     try {
-      const res = await api.get("/notifications/stats");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/notifications/stats"),
+        "/notifications/stats"
+      );
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading notification stats:', err);
@@ -81,7 +91,11 @@ export default function StudentNotifications() {
 
   async function loadNotificationTypes() {
     try {
-      const res = await api.get("/notifications/types");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/notifications/types"),
+        "/notifications/types"
+      );
       const data = res.data.data;
       setNotificationTypes(data.types || []);
       setPriorities(data.priorities || []);

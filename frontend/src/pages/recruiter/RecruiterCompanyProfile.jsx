@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -146,8 +147,11 @@ export default function CompanyProfile() {
         return;
       }
       
-      // Fetch all jobs for the recruiter
-      const res = await api.get(`/jobs/recruiter/my-jobs`);
+      // Fetch all jobs for the recruiter with caching
+      const res = await cachedApiCall(
+        () => api.get(`/jobs/recruiter/my-jobs`),
+        "/jobs/recruiter/my-jobs"
+      );
       console.log("[fetch jobs count] Response received:", res);
       
       if (res && res.data && res.data.data) {
@@ -180,7 +184,11 @@ export default function CompanyProfile() {
   async function fetchCompanyProfile() {
     try {
       setLoading(true);
-      const res = await api.get("/companies");
+      // Use cachedApiCall for GET requests that benefit from caching
+      const res = await cachedApiCall(
+        () => api.get("/companies"),
+        "/companies"
+      );
       console.log("[fetch company profile] Response:", res.data);
 
       // Check if recruiter has a company
@@ -199,11 +207,11 @@ export default function CompanyProfile() {
           setCompany(userCompany);
           setFormData({
             name: userCompany.name || "",
-            desc: userCompany.desc || "",
+            desc: userCompany.desc || userCompany.description || "",
             website: userCompany.website || "",
             location: userCompany.location || "",
-            industry: userCompany.industry || "",
-            size: userCompany.size || "1-10",
+            industry: validIndustryOptions.has(userCompany.industry) ? userCompany.industry : "Other",
+            size: validSizeOptions.has(userCompany.size) ? userCompany.size : "1-10",
             employeeCount: userCompany.employeeCount || "",
             socialMedia: {
               linkedin: userCompany.socialMedia?.linkedin || "",
@@ -212,19 +220,39 @@ export default function CompanyProfile() {
               instagram: userCompany.socialMedia?.instagram || ""
             }
           });
+          setShowForm(false);
+        } else {
+          console.log("[fetch company profile] No company found for current user");
+          setCompany(null);
+          // Reset form data to defaults when no company found
+          setFormData({
+            name: "",
+            desc: "",
+            website: "",
+            location: "",
+            industry: "Other",
+            size: "1-10",
+            employeeCount: "",
+            socialMedia: {
+              linkedin: "",
+              twitter: "",
+              facebook: "",
+              instagram: ""
+            }
+          });
+          setShowForm(true);
         }
+      } else {
+        console.log("[fetch company profile] No companies found in response");
+        setCompany(null);
+        setShowForm(true);
       }
     } catch (err) {
-      console.error("[fetch company profile]", err);
-
-      if (err.response?.status === 403) {
-        setErrorMsg("Access denied. Please ensure you are logged in as a recruiter.");
-      } else if (err.response?.status === 401) {
-        setErrorMsg("Authentication required. Please log in again.");
-      } else {
-        const errorMessage = err.response?.data?.message || "Failed to load company profile";
-        setErrorMsg(errorMessage);
-      }
+      console.error("[fetch company profile] Error:", err);
+      console.error("[fetch company profile] Error response:", err.response);
+      setErrorMsg("Failed to load company profile");
+      setCompany(null);
+      setShowForm(true);
     } finally {
       setLoading(false);
     }

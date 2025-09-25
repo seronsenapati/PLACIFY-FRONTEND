@@ -1,6 +1,7 @@
 // src/pages/student/StudentSettings.jsx
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache"; // Added import for caching utility
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -94,7 +95,10 @@ export default function StudentSettings() {
     (async () => {
       try {
         // Fetch profile info
-        const profileRes = await api.get("/settings/profile");
+        const profileRes = await cachedApiCall(
+          () => api.get("/settings/profile"),
+          "/settings/profile"
+        );
         const profileData = profileRes.data?.data || {};
         setForm({
           name: profileData.name || "",
@@ -105,7 +109,10 @@ export default function StudentSettings() {
         });
 
         // Fetch notification preferences
-        const notificationRes = await api.get("/settings/notifications");
+        const notificationRes = await cachedApiCall(
+          () => api.get("/settings/notifications"),
+          "/settings/notifications"
+        );
         const notificationData = notificationRes.data?.data || {};
         if (notificationData && Object.keys(notificationData).length > 0) {
           setNotificationPreferences(notificationData);

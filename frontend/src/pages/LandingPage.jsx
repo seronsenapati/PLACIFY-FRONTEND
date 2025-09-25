@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isLoggedIn, getRole } from "../utils/auth";
+import { cachedApiCall } from "../utils/cache"; // Added import for caching utility
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -16,6 +17,31 @@ export default function Landing() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Prefetch data for faster loading
+  useEffect(() => {
+    const prefetchData = async () => {
+      try {
+        // Prefetch jobs data for faster initial load
+        await cachedApiCall(
+          () => fetch('/api/jobs?limit=10').then(res => res.json()),
+          "/jobs",
+          { limit: 10 }
+        );
+      } catch (error) {
+        console.error("[Prefetch] Error during landing page prefetch:", error);
+        // Don't fail if prefetch fails
+      }
+    };
+
+    // Start prefetching data in background after a short delay
+    // to not block initial render
+    const prefetchTimer = setTimeout(() => {
+      prefetchData();
+    }, 1000);
+    
+    return () => clearTimeout(prefetchTimer);
   }, []);
 
   const scrollToAbout = () => {

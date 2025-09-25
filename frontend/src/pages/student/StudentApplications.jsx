@@ -1,6 +1,7 @@
 // src/pages/student/StudentApplications.jsx
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedApiCall } from "../../utils/cache";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
@@ -69,7 +70,11 @@ export default function StudentApplications() {
       if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
       if (filters.order) queryParams.append('order', filters.order);
 
-      const res = await api.get(`/applications/student?${queryParams.toString()}`);
+      const res = await cachedApiCall(
+        () => api.get(`/applications/student?${queryParams.toString()}`),
+        "/applications/student",
+        { ...filters }
+      );
       const data = res.data.data;
       setApplications(data.applications || []);
       setPagination(data.pagination || {});
@@ -83,7 +88,10 @@ export default function StudentApplications() {
 
   async function loadStats() {
     try {
-      const res = await api.get("/applications/student/stats");
+      const res = await cachedApiCall(
+        () => api.get("/applications/student/stats"),
+        "/applications/student/stats"
+      );
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading application stats:', err);

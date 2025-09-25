@@ -12,6 +12,7 @@ import api from "../../services/api";
 import LoadingScreen from "../../components/LoadingScreen";
 import MiniLoader from "../../components/MiniLoader";
 import Message from "../../components/Message";
+import { cachedApiCall } from "../../utils/cache";
 import { getUserId } from "../../utils/auth";
 
 export default function RecruiterDashboard() {
@@ -39,7 +40,10 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
-        const res = await api.get("/companies");
+        const res = await cachedApiCall(
+          () => api.get("/companies"),
+          "/companies"
+        );
         console.log("[Dashboard] Companies API response:", res);
         if (res?.data?.data?.companies && res.data.data.companies.length > 0) {
           // Get the current user ID
@@ -79,8 +83,11 @@ export default function RecruiterDashboard() {
       setLoading(true);
       setError(null);
 
-      // Try to load the main dashboard data first
-      const res = await api.get("/dashboard/recruiter/overview");
+      // Try to load the main dashboard data first with caching
+      const res = await cachedApiCall(
+        () => api.get("/dashboard/recruiter/overview"),
+        "/dashboard/recruiter/overview"
+      );
       console.log("[Dashboard] Main dashboard API response:", res);
       
       // Validate response structure
@@ -227,21 +234,34 @@ export default function RecruiterDashboard() {
   // Also update the fallback data loading to better handle application counts
   const loadFallbackDashboardData = async () => {
     try {
-      // Load jobs stats as fallback
+      // Load jobs stats as fallback with caching
       const [statsRes, jobsRes, profileRes, applicationsRes] = await Promise.all([
-        api.get("/jobs/recruiter/stats").catch(err => {
+        cachedApiCall(
+          () => api.get("/jobs/recruiter/stats"),
+          "/jobs/recruiter/stats"
+        ).catch(err => {
           console.error("[Dashboard Fallback] Failed to fetch jobs stats:", err);
           return null;
         }),
-        api.get("/jobs/recruiter/my-jobs?limit=5").catch(err => {
+        cachedApiCall(
+          () => api.get("/jobs/recruiter/my-jobs?limit=5"),
+          "/jobs/recruiter/my-jobs",
+          { limit: 5 }
+        ).catch(err => {
           console.error("[Dashboard Fallback] Failed to fetch jobs:", err);
           return null;
         }),
-        api.get("/profile").catch(err => {
+        cachedApiCall(
+          () => api.get("/profile"),
+          "/profile"
+        ).catch(err => {
           console.error("[Dashboard Fallback] Failed to fetch profile:", err);
           return null;
         }),
-        api.get("/applications/recruiter/stats").catch(err => {
+        cachedApiCall(
+          () => api.get("/applications/recruiter/stats"),
+          "/applications/recruiter/stats"
+        ).catch(err => {
           console.error("[Dashboard Fallback] Failed to fetch applications stats:", err);
           return null;
         })
