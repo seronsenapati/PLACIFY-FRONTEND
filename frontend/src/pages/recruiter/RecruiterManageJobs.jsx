@@ -306,21 +306,37 @@ export default function RecruiterManageJobs() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Manage Jobs</h1>
             <p className="text-gray-400 text-sm sm:text-base">Create, edit, and track your job postings</p>
           </div>
-          <button
-            onClick={() => { loadJobs(); loadStats(); }}
-            disabled={loading}
-            className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-white disabled:opacity-50 transition flex items-center gap-1"
-          >
-            {loading ? (
-              <>
-                <MiniLoader />
-                Refreshing...
-              </>
-            ) : (
-              'Refresh'
-            )}
-          </button>
         </div>
+
+        {/* Create Job Button - Positioned on the left side */}
+        {jobs.length > 0 && (
+          <div className="mb-4">
+            <button
+              onClick={async () => {
+                // Check if recruiter has company profile before creating job
+                console.log("Checking company profile before creating job...");
+                try {
+                  const hasCompany = await checkCompanyProfile();
+                  console.log("Company profile check result:", hasCompany);
+                  if (!hasCompany) {
+                    setErrorMsg("You must create a company profile before posting jobs. Please create a company first.");
+                    return;
+                  }
+                } catch (err) {
+                  console.error("Error checking company profile:", err);
+                  setErrorMsg("Error checking your profile. Please try again.");
+                  return;
+                }
+                setCurrentJob(null);
+                setShowCreateModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-white/10 border border-white/30 text-white hover:bg-blue-500/20 hover:border-blue-500/50 transition"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Create Job
+            </button>
+          </div>
+        )}
 
         {/* Messages */}
         {successMsg && (
@@ -405,7 +421,7 @@ export default function RecruiterManageJobs() {
         <div className="bg-white/5 rounded-lg border border-white/10 p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="lg:col-span-2">
+            <div>
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -535,126 +551,149 @@ export default function RecruiterManageJobs() {
               </div>
             </div>
           ) : (
-            jobs.map(job => (
-              <div
-                key={job._id}
-                className="p-5 rounded-xl border bg-white/5 border-white/10 transition-all duration-300 hover:border-white/20"
-              >
-                <div className="flex flex-col md:flex-row md:items-start gap-4">
-                  {/* Job Info */}
-                  <div className="flex-1">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
-                      <div>
-                        <h3 className="font-semibold text-white text-lg mb-1">
-                          {job.title}
-                        </h3>
-                        <p className="text-gray-300">
-                          {job.role} at {job.company?.name || "Your Company"}
-                        </p>
+            <>
+              {/* Clear Filters Button - Always visible when filters are active, even when jobs are present */}
+              {(filters.search || filters.status || filters.jobType) && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setFilters({
+                      page: 1,
+                      limit: 10,
+                      search: '',
+                      status: '',
+                      jobType: '',
+                      sortBy: 'createdAt',
+                      order: 'desc'
+                    })}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all duration-200"
+                  >
+                    <XIcon className="w-4 h-4" />
+                    Clear filters
+                  </button>
+                </div>
+              )}
+
+              {jobs.map(job => (
+                <div
+                  key={job._id}
+                  className="p-5 rounded-xl border bg-white/5 border-white/10 transition-all duration-300 hover:border-white/20"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    {/* Job Info */}
+                    <div className="flex-1">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
+                        <div>
+                          <h3 className="font-semibold text-white text-lg mb-1">
+                            {job.title}
+                          </h3>
+                          <p className="text-gray-300">
+                            {job.role} at {job.company?.name || "Your Company"}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className={getStatusBadgeClass(job.status)}>
+                            {formatStatus(job.status)}
+                          </span>
+                          <span className={getJobTypeBadgeClass(job.jobType)}>
+                            {job.jobType?.replace('-', ' ')}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className={getStatusBadgeClass(job.status)}>
-                          {formatStatus(job.status)}
-                        </span>
-                        <span className={getJobTypeBadgeClass(job.jobType)}>
-                          {job.jobType?.replace('-', ' ')}
-                        </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm mb-4">
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <MapPinIcon className="w-4 h-4" />
+                          <span>{job.location}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-gray-400">
+                          {/* Changed to BanknoteIcon */}
+                          <BanknoteIcon className="w-4 h-4" />
+                          <span>{formatSalary(job.salary)}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <CalendarIcon className="w-4 h-4" />
+                          <span>Posted: {formatDate(job.createdAt)}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <ClockIcon className="w-4 h-4" />
+                          <span>
+                            {job.expiresAt
+                              ? getExpirationStatus(job.expiresAt).text
+                              : "No expiration"}
+                          </span>
+                        </div>
                       </div>
+
+                      <p className="text-gray-300 text-sm line-clamp-2">
+                        {job.desc}
+                      </p>
+
+                      {job.skills && job.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {job.skills.slice(0, 5).map((skill, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {job.skills.length > 5 && (
+                            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full border border-gray-500/30">
+                              +{job.skills.length - 5} more
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm mb-4">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <MapPinIcon className="w-4 h-4" />
-                        <span>{job.location}</span>
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 md:items-end">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setCurrentJob(job);
+                            setShowEditModal(true);
+                          }}
+                          className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-1"
+                        >
+                          <EditIcon className="w-4 h-4" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => deleteJob(job._id)}
+                          disabled={actionLoading[job._id]}
+                          className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {actionLoading[job._id] ? (
+                            <MiniLoader size="xs" color="red" />
+                          ) : (
+                            <TrashIcon className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">Delete</span>
+                        </button>
                       </div>
 
-                      <div className="flex items-center gap-2 text-gray-400">
-                        {/* Changed to BanknoteIcon */}
-                        <BanknoteIcon className="w-4 h-4" />
-                        <span>{formatSalary(job.salary)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <CalendarIcon className="w-4 h-4" />
-                        <span>Posted: {formatDate(job.createdAt)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <ClockIcon className="w-4 h-4" />
-                        <span>
-                          {job.expiresAt
-                            ? getExpirationStatus(job.expiresAt).text
-                            : "No expiration"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-300 text-sm line-clamp-2">
-                      {job.desc}
-                    </p>
-
-                    {job.skills && job.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {job.skills.slice(0, 5).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {job.skills.length > 5 && (
-                          <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full border border-gray-500/30">
-                            +{job.skills.length - 5} more
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 md:items-end">
-                    <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          setCurrentJob(job);
-                          setShowEditModal(true);
+                          // Navigate to the applications page for this job
+                          window.location.href = `/recruiter/applications?jobId=${job._id}`;
                         }}
-                        className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-1"
+                        className="px-4 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-2"
                       >
-                        <EditIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Edit</span>
-                      </button>
-
-                      <button
-                        onClick={() => deleteJob(job._id)}
-                        disabled={actionLoading[job._id]}
-                        className="px-3 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-red-500/20 hover:border-red-500/50 transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {actionLoading[job._id] ? (
-                          <MiniLoader size="xs" color="red" />
-                        ) : (
-                          <TrashIcon className="w-4 h-4" />
-                        )}
-                        <span className="hidden sm:inline">Delete</span>
+                        <EyeIcon className="w-4 h-4" />
+                        View Applications
                       </button>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        // Navigate to the applications page for this job
-                        window.location.href = `/recruiter/applications?jobId=${job._id}`;
-                      }}
-                      className="px-4 py-2 text-sm font-medium rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition flex items-center gap-2"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                      View Applications
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </>
           )}
         </div>
 

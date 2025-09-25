@@ -196,11 +196,11 @@ export default function DashboardLayout({ children }) {
               </svg>
             </button>
             
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+            <div className="flex items-center gap-4 -ml-17 sm:-ml-0 min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
                 {username ? `Welcome back, ${username}.` : "Welcome to Dashboard"}
               </h1>
-              <div className={`hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r ${getRoleColor(role)} shadow-lg`}>
+              <div className={`hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r ${getRoleColor(role)} shadow-lg flex-shrink-0`}>
                 {getRoleIcon(role)}
                 <span className="capitalize">{role}</span>
               </div>
