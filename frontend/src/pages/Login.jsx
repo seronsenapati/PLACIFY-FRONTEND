@@ -72,6 +72,9 @@ const Login = () => {
       // Clear any existing rate limit data on successful login
       clearRateLimitData('login');
       
+      // Clear API cache on login
+      api.clearAllCache();
+      
       // Check for saved redirect path
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {

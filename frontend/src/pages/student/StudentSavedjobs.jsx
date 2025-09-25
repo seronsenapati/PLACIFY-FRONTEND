@@ -19,6 +19,7 @@ import {
   Check,
   X
 } from "lucide-react";
+import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function StudentSavedJobs() {
   const [items, setItems] = useState([]);
@@ -56,10 +57,24 @@ export default function StudentSavedJobs() {
   async function load() {
     setLoading(true);
     try {
-      // Fetch bookmarks and applications in parallel
+      // Try to get cached saved jobs data first
+      const cachedData = sessionStorage.getItem('student_saved_jobs');
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        // Use cached data if it's less than 5 minutes old
+        if (Date.now() - timestamp < 300000) {
+          console.log("[Cache] Using cached student saved jobs data");
+          setItems(data.items || []);
+          setApplied(data.applied || new Set());
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fetch bookmarks and applications in parallel using cached API
       const requests = [
-        api.get("/bookmarks"),
-        api.get("/applications/student")
+        api.getCached("/bookmarks"),
+        api.getCached("/applications/student")
       ];
 
       const [bookmarksRes, applicationsRes] = await Promise.all(requests);
@@ -68,11 +83,21 @@ export default function StudentSavedJobs() {
       const bookmarksData = Array.isArray(bookmarksRes.data)
         ? bookmarksRes.data
         : (bookmarksRes.data?.data || []);
-      setItems(bookmarksData);
-
+      
       // Process applications data
       const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
       const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+      
+      // Cache the data
+      sessionStorage.setItem('student_saved_jobs', JSON.stringify({
+        data: {
+          items: bookmarksData,
+          applied: [...aSet]
+        },
+        timestamp: Date.now()
+      }));
+      
+      setItems(bookmarksData);
       setApplied(aSet);
     } catch (err) {
       console.error(err);
@@ -91,6 +116,10 @@ export default function StudentSavedJobs() {
       setItems((prev) =>
         Array.isArray(prev) ? prev.filter((x) => (x.jobId || x._id || x.id) !== jobId) : []
       );
+      
+      // Clear cache when a job is removed
+      sessionStorage.removeItem('student_saved_jobs');
+      
       setSuccessMsg("Job removed from saved jobs");
     } catch (err) {
       console.error(err);
@@ -159,6 +188,20 @@ export default function StudentSavedJobs() {
 
       // Add job to applied set
       setApplied(prev => new Set(prev).add(jobId));
+      
+      // Update cache with new applied status
+      const cachedData = sessionStorage.getItem('student_saved_jobs');
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        sessionStorage.setItem('student_saved_jobs', JSON.stringify({
+          ...parsed,
+          data: {
+            ...parsed.data,
+            applied: [...new Set([...parsed.data.applied, jobId])]
+          }
+        }));
+      }
+      
       setSuccessMsg("Application submitted successfully");
     } catch (err) {
       console.error(err);

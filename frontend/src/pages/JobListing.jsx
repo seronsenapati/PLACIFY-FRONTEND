@@ -47,15 +47,32 @@ export default function JobListing() {
       setError(null);
       setSuccess(null);
 
+      // Try to get cached jobs data first
+      const cachedJobs = sessionStorage.getItem('jobs_list');
+      if (cachedJobs) {
+        const { data, timestamp } = JSON.parse(cachedJobs);
+        // Use cached data if it's less than 5 minutes old
+        if (Date.now() - timestamp < 300000) {
+          setJobs(data);
+          setLoading(false);
+          
+          // Fetch bookmarks and applications in background for logged-in users
+          if (loggedIn && role === 'student') {
+            fetchUserDataInBackground();
+          }
+          return;
+        }
+      }
+
       // Fetch jobs, bookmarks, and applications in parallel
       const requests = [
-        api.get('/jobs'),
-        loggedIn && role === 'student' ? api.get('/bookmarks') : Promise.resolve({ data: [] })
+        api.getCached('/jobs'), // Use cached API method
+        loggedIn && role === 'student' ? api.getCached('/bookmarks') : Promise.resolve({ data: [] })
       ];
 
       // Add applications request if user is a student
       if (loggedIn && role === 'student') {
-        requests.push(api.get('/applications/student'));
+        requests.push(api.getCached('/applications/student'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
@@ -80,6 +97,12 @@ export default function JobListing() {
 
       console.log('Processed jobs data:', jobsData);
       setJobs(jobsData);
+      
+      // Cache jobs data
+      sessionStorage.setItem('jobs_list', JSON.stringify({
+        data: jobsData,
+        timestamp: Date.now()
+      }));
 
       // Process bookmarks if user is a student
       if (loggedIn && role === 'student' && bookmarksRes.data) {
@@ -118,6 +141,33 @@ export default function JobListing() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch user data (bookmarks, applications) in background
+  const fetchUserDataInBackground = async () => {
+    try {
+      if (loggedIn && role === 'student') {
+        // Fetch bookmarks
+        const bookmarksRes = await api.getCached('/bookmarks');
+        if (bookmarksRes.data) {
+          const bookmarksData = Array.isArray(bookmarksRes.data)
+            ? bookmarksRes.data
+            : (bookmarksRes.data?.data || []);
+          const bSet = new Set(bookmarksData.map((b) => b.jobId || b._id || b.id));
+          setBookmarked(bSet);
+        }
+
+        // Fetch applications
+        const applicationsRes = await api.getCached('/applications/student');
+        if (applicationsRes.data) {
+          const applicationsData = applicationsRes.data.data?.applications || applicationsRes.data.data || [];
+          const aSet = new Set(applicationsData.map((a) => a.job?._id || a.job?.id || a.jobId));
+          setApplied(aSet);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user data in background:', err);
     }
   };
 

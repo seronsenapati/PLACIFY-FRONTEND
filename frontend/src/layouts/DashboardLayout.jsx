@@ -23,15 +23,32 @@ export default function DashboardLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch unread notification count
+  // Fetch unread notification count with caching
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (role !== 'student' && role !== 'recruiter') return;
       
       try {
+        // Try to get cached notification count first
+        const cachedUnread = sessionStorage.getItem('unread_notifications');
+        if (cachedUnread) {
+          const { count, timestamp } = JSON.parse(cachedUnread);
+          // Use cached data if it's less than 30 seconds old
+          if (Date.now() - timestamp < 30000) {
+            setUnreadCount(count);
+            return;
+          }
+        }
+        
         const response = await api.get("/notifications/stats");
         const unread = response.data.data?.unread || 0;
         setUnreadCount(unread);
+        
+        // Cache the result
+        sessionStorage.setItem('unread_notifications', JSON.stringify({
+          count: unread,
+          timestamp: Date.now()
+        }));
       } catch (error) {
         console.error("Failed to fetch notification stats:", error);
         setUnreadCount(0);
@@ -40,8 +57,8 @@ export default function DashboardLayout({ children }) {
 
     fetchUnreadCount();
 
-    // Set up polling to refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
+    // Set up polling to refresh every 60 seconds (reduced frequency)
+    const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
   }, [role]);
 

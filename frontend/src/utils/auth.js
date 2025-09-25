@@ -209,3 +209,49 @@ export function isTokenExpired() {
     return true; // Assume expired if we can't check
   }
 }
+
+// Add cache utilities for dashboard data
+const DASHBOARD_CACHE_KEY = 'dashboard_cache';
+const DASHBOARD_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export function setCachedDashboardData(data) {
+  try {
+    const cacheData = {
+      data: data,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error('Error caching dashboard data:', error);
+  }
+}
+
+export function getCachedDashboardData() {
+  try {
+    const cached = localStorage.getItem(DASHBOARD_CACHE_KEY);
+    if (!cached) return null;
+    
+    const parsed = JSON.parse(cached);
+    const now = Date.now();
+    
+    // Check if cache is still valid
+    if (now - parsed.timestamp < DASHBOARD_CACHE_DURATION) {
+      return parsed.data;
+    } else {
+      // Clear expired cache
+      localStorage.removeItem(DASHBOARD_CACHE_KEY);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting cached dashboard data:', error);
+    return null;
+  }
+}
+
+export function clearDashboardCache() {
+  try {
+    localStorage.removeItem(DASHBOARD_CACHE_KEY);
+  } catch (error) {
+    console.error('Error clearing dashboard cache:', error);
+  }
+}

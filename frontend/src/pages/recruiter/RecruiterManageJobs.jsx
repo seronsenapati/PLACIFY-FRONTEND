@@ -23,6 +23,7 @@ import {
   Banknote as BanknoteIcon
 } from "../../components/CustomIcons";
 import { formatDate } from "../../utils/formatUtils";
+import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function RecruiterManageJobs() {
   const [jobs, setJobs] = useState([]);
@@ -67,13 +68,47 @@ export default function RecruiterManageJobs() {
 
   async function loadJobs() {
     try {
+      setLoading(true);
+      
+      // Try to get cached jobs data first
+      const cachedJobs = sessionStorage.getItem('recruiter_jobs_list');
+      if (cachedJobs) {
+        const { data, timestamp } = JSON.parse(cachedJobs);
+        // Use cached data if it's less than 5 minutes old
+        if (Date.now() - timestamp < 300000) {
+          console.log("[Cache] Using cached recruiter jobs data");
+          setJobs(data.jobs || []);
+          setPagination(data.pagination || {
+            currentPage: 1,
+            totalPages: 1,
+            totalCount: 0
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       const queryParams = new URLSearchParams();
       Object.keys(filters).forEach(key => {
         if (filters[key]) queryParams.append(key, filters[key]);
       });
 
-      const res = await api.get(`/jobs/recruiter/my-jobs?${queryParams.toString()}`);
+      const res = await api.getCached(`/jobs/recruiter/my-jobs?${queryParams.toString()}`);
       const data = res.data.data;
+      
+      // Cache the data
+      sessionStorage.setItem('recruiter_jobs_list', JSON.stringify({
+        data: {
+          jobs: data.jobs || [],
+          pagination: {
+            currentPage: data.currentPage || 1,
+            totalPages: data.totalPages || 1,
+            totalCount: data.totalJobs || 0
+          }
+        },
+        timestamp: Date.now()
+      }));
+      
       setJobs(data.jobs || []);
       setPagination({
         currentPage: data.currentPage || 1,
@@ -98,7 +133,26 @@ export default function RecruiterManageJobs() {
 
   async function loadStats() {
     try {
-      const res = await api.get("/jobs/recruiter/stats");
+      // Try to get cached stats data first
+      const cachedStats = sessionStorage.getItem('recruiter_jobs_stats');
+      if (cachedStats) {
+        const { data, timestamp } = JSON.parse(cachedStats);
+        // Use cached data if it's less than 5 minutes old
+        if (Date.now() - timestamp < 300000) {
+          console.log("[Cache] Using cached recruiter stats data");
+          setStats(data || {});
+          return;
+        }
+      }
+      
+      const res = await api.getCached("/jobs/recruiter/stats");
+      
+      // Cache the data
+      sessionStorage.setItem('recruiter_jobs_stats', JSON.stringify({
+        data: res.data.data || {},
+        timestamp: Date.now()
+      }));
+      
       setStats(res.data.data || {});
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -165,6 +219,11 @@ export default function RecruiterManageJobs() {
     try {
       await api.delete(`/jobs/${jobId}`);
       setSuccessMsg("Job deleted successfully");
+      
+      // Clear cache when a job is deleted
+      sessionStorage.removeItem('recruiter_jobs_list');
+      sessionStorage.removeItem('recruiter_jobs_stats');
+      
       loadJobs();
       loadStats();
     } catch (err) {
@@ -690,6 +749,11 @@ export default function RecruiterManageJobs() {
             setShowCreateModal(false);
             setShowEditModal(false);
             setCurrentJob(null);
+            
+            // Clear cache when a job is created/updated
+            sessionStorage.removeItem('recruiter_jobs_list');
+            sessionStorage.removeItem('recruiter_jobs_stats');
+            
             setSuccessMsg(currentJob ? "Job updated successfully" : "Job created successfully");
             loadJobs();
             loadStats();

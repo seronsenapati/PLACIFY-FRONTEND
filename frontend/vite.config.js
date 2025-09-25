@@ -35,6 +35,20 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 1000 // Increase limit to reduce warnings
+    chunkSizeWarningLimit: 1000, // Increase limit to reduce warnings
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+    // Generate CSS sourcemaps in development
+    sourcemap: true,
+    // Minify JS and CSS
+    minify: 'esbuild',
+    // Optimize dependencies
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router-dom', 'axios']
+    }
+  },
+  // Optimize dependencies pre-bundling
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'axios', 'lucide-react']
   }
 });

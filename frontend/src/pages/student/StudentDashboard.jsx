@@ -15,6 +15,7 @@ import {
   AlertCircle as AlertCircleIcon
 } from "../../components/CustomIcons";
 import { formatDate, getStatusStyles } from "../../utils/formatUtils";
+import { getCachedDashboardData, setCachedDashboardData } from "../../utils/auth";
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
@@ -29,13 +30,33 @@ export default function StudentDashboard() {
   async function loadDashboardData() {
     setLoading(true);
     try {
+      // Try to get cached dashboard data first
+      const cachedData = getCachedDashboardData();
+      if (cachedData) {
+        console.log("[Cache] Using cached student dashboard data");
+        setApplications(cachedData.applications || []);
+        setBookmarkedJobs(cachedData.bookmarkedJobs || []);
+        setLoading(false);
+        return;
+      }
+
       // Load applications data
-      const applicationsRes = await api.get("/applications/student");
-      setApplications(applicationsRes.data.data?.applications || []);
+      const applicationsRes = await api.getCached("/applications/student");
+      const applicationsData = applicationsRes.data.data?.applications || [];
 
       // Load bookmarked jobs
-      const bookmarksRes = await api.get("/jobs/student/bookmarks");
-      setBookmarkedJobs(bookmarksRes.data.data || []);
+      const bookmarksRes = await api.getCached("/jobs/student/bookmarks");
+      const bookmarksData = bookmarksRes.data.data || [];
+
+      // Cache the data
+      const dashboardData = {
+        applications: applicationsData,
+        bookmarkedJobs: bookmarksData
+      };
+      setCachedDashboardData(dashboardData);
+
+      setApplications(applicationsData);
+      setBookmarkedJobs(bookmarksData);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setErrorMsg('Failed to load dashboard data. Please try again later.');

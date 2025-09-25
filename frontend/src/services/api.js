@@ -109,4 +109,54 @@ api.interceptors.response.use(
   }
 );
 
+// Add caching layer for GET requests
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Enhanced GET method with caching
+api.getCached = async (url, config = {}) => {
+  const cacheKey = `${url}_${JSON.stringify(config.params || {})}`;
+  const cached = cache.get(cacheKey);
+  
+  // Check if we have valid cached data
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log(`[API Cache] Returning cached data for ${url}`);
+    return Promise.resolve(cached.data);
+  }
+  
+  try {
+    // Fetch fresh data
+    const response = await api.get(url, config);
+    
+    // Cache the response
+    cache.set(cacheKey, {
+      data: response,
+      timestamp: Date.now()
+    });
+    
+    console.log(`[API Cache] Cached fresh data for ${url}`);
+    return response;
+  } catch (error) {
+    // If we have cached data and the request fails, return cached data as fallback
+    if (cached) {
+      console.warn(`[API Cache] Using cached data as fallback for ${url}`);
+      return cached.data;
+    }
+    
+    // Otherwise, rethrow the error
+    throw error;
+  }
+};
+
+// Method to clear cache for a specific URL
+api.clearCache = (url, params = {}) => {
+  const cacheKey = `${url}_${JSON.stringify(params)}`;
+  cache.delete(cacheKey);
+};
+
+// Method to clear all cache
+api.clearAllCache = () => {
+  cache.clear();
+};
+
 export default api;
